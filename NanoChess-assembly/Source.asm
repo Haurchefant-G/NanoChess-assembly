@@ -23,7 +23,7 @@ includelib  msimg32.lib
 
 .const
 line equ 9
-boardsize equ 289 ;(2 * 9 - 1) ^ 2
+boardsize equ 153 ;9 * (2 * 9 - 1) 
 ;chessBg equ BMP_CHESSBG
 
 ;==================== DATA =======================
