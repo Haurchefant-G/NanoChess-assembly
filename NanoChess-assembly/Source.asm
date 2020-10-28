@@ -29,19 +29,21 @@ boardsize equ 153 ;9 * (2 * 9 - 1)
 ;==================== DATA =======================
 .data
 
+; 棋格结构体
 CELL STRUCT
     m_color    BYTE    ?    ;颜色
     m_type     BYTE    0    ;道具类型(0为普通格，1为炸弹)
     m_frame    BYTE    0    ;帧动画
+	m_nouse    BYTE    0    ;占位，凑4字节
 CELL ENDS
 
+; 棋盘
+chessboard CELL 153 dup(<0,0,0>)
 
-chessboard CELL 289 dup(<0,0,0>)
 
-
-winRect   RECT <>
-hMainWnd  DWORD ?
+; win32相关
 hInstance DWORD ?
+hMainWnd  DWORD ?
 hDC       DWORD ?
 
 
@@ -53,11 +55,14 @@ msg MSG <>
 
 szWindowName  BYTE "NanoChess",0
 szClassName   BYTE "ASMWin",0
+
+
+; gdip相关
 m_GdiplusToken	DWORD 0;
 graphics		DWORD 0;
 
-hChessBg  DWORD 0
 
+; 文件名处理宏
 $$Unicode MACRO name, string
 	&name	LABEL BYTE
 	FORC	char, string
@@ -66,9 +71,14 @@ $$Unicode MACRO name, string
 		DB 0, 0
 ENDM
 
+; png图片文件
 $$Unicode chessBg, chessBg.png
-; proc声明
 
+
+; gdip加载图片资源指针
+hChessBg  DWORD 0
+
+; proc声明
 InitLoadProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 PaintProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 StartupInput		GdiplusStartupInput <1, NULL, FALSE, 0>
@@ -110,23 +120,6 @@ WinMain PROC
 	; 初始化GDI+
 	INVOKE	GdiplusStartup, ADDR m_GdiplusToken, ADDR StartupInput, 0
 
-	;INVOKE GetDC, hInstance
-	;mov hDC, eax
-
-
-	;mov	hWnd,rax
-    	;invoke  GetDC,rax       ;получить DC
-    	;mov	hDC,rax
-        ;lea	edx,gdiHgraphics
-	;invoke	GdipCreateFromHDC,eax; Get graphics "object" from DC handle
-	;HDC hdc = ::GetDC(hwnd);
-;HDC memDC = ::CreateCompatibleDC(hdc);
-;HBITMAP memBitmap = ::CreateCompatibleBitmap(hdc,wndSize.cx,wndSize.cy);
-;::SelectObject(memDC,memBitmap);
-;Gdiplus::Image image(L"pic.png");
-;Gdiplus::Graphics graphics(memDC);
-
-
 	; Create the application's main window.
 	; Returns a handle to the main window in EAX.
 	INVOKE CreateWindowEx, 0, ADDR szClassName,
@@ -143,9 +136,7 @@ WinMain PROC
 
 	;INVOKE  GetDC, hMainWnd      
     ;;mov	hDC, eax
-	;
 	;INVOKE GdipCreateFromHWND, hMainWnd, OFFSET graphics
-
 	;INVOKE GdipCreateFromHDC, hDC, OFFSET graphics
 
 	; Show and draw the window.
@@ -180,9 +171,8 @@ WinProc PROC uses ebx edi esi,
 	mov eax, localMsg
 
 	.IF eax == WM_PAINT
+		; 调用绘图过程
 		INVOKE PaintProc, hWnd, wParam, lParam
-		;INVOKE GdipDrawImage, graphics, hChessBg, 0, 0
-		;INVOKE GdipDrawImage, graphics, hChessBg, 200, 200
 		
 	.ELSEIF eax == WM_CREATE
 		INVOKE InitLoadProc, hWnd, wParam, lParam
@@ -238,6 +228,8 @@ PaintProc PROC,
 	ret
 
 PaintProc ENDP
+
+
 ;-----------------------------------------------------
 InitLoadProc PROC,
 	hWnd:DWORD, wParam:DWORD, lParam:DWORD
