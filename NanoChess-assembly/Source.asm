@@ -22,8 +22,22 @@ include	 msimg32.inc
 includelib  msimg32.lib
 
 .const
-line equ 9
+Column equ 9
+Row equ 17
 boardsize equ 153 ;9 * (2 * 9 - 1) 
+WINDOW_WIDTH equ 600
+WINDOW_HEIGHT equ 900
+WINDOW_TITLEBARHEIGHT equ 32
+
+BOARD_X equ 6
+BOARD_Y equ 110
+
+CELL_HEIGHT equ 76
+COLUMN_CELL_SPACE equ 38
+CELL_WIDTH equ 84
+; HALF_CELL_WIDTH equ
+EVEN_CELL_START equ 63
+ROW_CELL_SPACE equ 126
 ;chessBg equ BMP_CHESSBG
 
 ;==================== DATA =======================
@@ -34,11 +48,11 @@ CELL STRUCT
     m_color    BYTE    ?    ;颜色
     m_type     BYTE    0    ;道具类型(0为普通格，1为炸弹)
     m_frame    BYTE    0    ;帧动画
-	m_nouse    BYTE    0    ;占位，凑4字节
+	m_scale    BYTE    0    ;占位，凑4字节
 CELL ENDS
 
 ; 棋盘
-chessboard CELL 153 dup(<0,0,0>)
+chessboard CELL 153 dup(<1,0,0,1>)
 
 
 ; win32相关
@@ -73,10 +87,18 @@ ENDM
 
 ; png图片文件
 $$Unicode chessBg, png\chessBg.png
+$$Unicode chessRed, png\chessRed.png			; type0
+$$Unicode chessPurple, png\chessPurple.png		; type1
 
 
 ; gdip加载图片资源指针
 hChessBg  DWORD 0
+hChessType0  DWORD 0
+hChessType1  DWORD 0
+hChessType2  DWORD 0
+hChessType3  DWORD 0
+hChessType4  DWORD 0
+hChessType5  DWORD 0
 
 ; proc声明
 InitLoadProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
@@ -124,8 +146,8 @@ WinMain PROC
 	; Returns a handle to the main window in EAX.
 	INVOKE CreateWindowEx, 0, ADDR szClassName,
 	  ADDR szWindowName, WS_CAPTION or WS_SYSMENU,
-	  CW_USEDEFAULT,CW_USEDEFAULT,600,
-	  600,NULL,NULL,hInstance,NULL
+	  CW_USEDEFAULT, CW_USEDEFAULT, WINDOW_WIDTH + 16,
+	  WINDOW_HEIGHT + WINDOW_TITLEBARHEIGHT, NULL, NULL, hInstance, NULL
 	mov hMainWnd, eax
 
 	; If CreateWindowEx failed, display a message & exit.
@@ -203,6 +225,13 @@ PaintProc PROC,
 	local   @hdcMemBuffer:DWORD
 	local	@stRect:RECT
 	local	@hFont
+	local	@cell:CELL
+	local	@i:DWORD
+	local	@j:DWORD
+	local	@x:DWORD
+	local	@y:DWORD
+	local	@chessAddress:DWORD
+	local	@chessColor:DWORD
 
 	invoke  BeginPaint,hWnd,addr @ps
 	mov hDC,eax
@@ -218,8 +247,100 @@ PaintProc PROC,
 	;invoke SelectObject,@hdcMemBuffer,@blankBmp
 
 
-	INVOKE GdipDrawImageI, graphics, hChessBg, 0, 0
-	INVOKE GdipDrawImageI, graphics, hChessBg, 200, 200
+	;INVOKE GdipDrawImageI, graphics, hChessBg, 0, 0
+	;INVOKE GdipDrawImageI, graphics, hChessBg, 200, 200
+
+	mov @i, 0
+	mov @y, BOARD_Y
+	.REPEAT
+		mov @j, 0
+		mov @x, BOARD_X
+		mov eax, @i
+		AND eax, 1b
+		.IF eax == 1
+			add @x, EVEN_CELL_START
+			.REPEAT
+				INVOKE GdipDrawImageRectI, graphics, hChessBg,
+					@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+					@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+					CELL_WIDTH, CELL_HEIGHT
+				add @x, ROW_CELL_SPACE
+				inc @j
+
+			.UNTIL @j == 4
+		.ELSE
+			.REPEAT
+				INVOKE GdipDrawImageRectI, graphics, hChessBg,
+					@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+					@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+					CELL_WIDTH, CELL_HEIGHT
+				add @x, ROW_CELL_SPACE
+				inc @j
+			.UNTIL @j == 5
+		.ENDIF
+		add @y, COLUMN_CELL_SPACE	; 行y值
+		inc @i
+	.UNTIL @i == 17
+
+
+	mov @i, 0
+	mov @y, BOARD_Y
+	mov @chessAddress, OFFSET chessboard
+	.REPEAT
+		mov @j, 0
+		mov @x, BOARD_X
+		mov eax, @i
+		AND eax, 1b
+		.IF eax == 1
+			add @x, EVEN_CELL_START
+			.REPEAT
+				mov eax, @chessAddress
+				mov eax, [eax]
+				mov @cell, eax
+				.IF @cell.m_color == 0
+					mov eax, hChessType0
+				.ELSEIF @cell.m_color == 1
+					mov eax, hChessType1
+				.ENDIF
+				mov @chessColor, eax
+
+				INVOKE GdipDrawImageRectI, graphics, @chessColor,
+					@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+					@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+					CELL_WIDTH, CELL_HEIGHT
+				
+				add @x, ROW_CELL_SPACE
+				inc @j
+				add @chessAddress, 2 * TYPE CELL
+
+			.UNTIL @j == 4
+		.ELSE
+
+			.REPEAT
+				mov eax, @chessAddress
+				mov eax, [eax]
+				mov @cell, eax
+				.IF @cell.m_color == 0
+					mov eax, hChessType0
+				.ELSEIF @cell.m_color == 1
+					mov eax, hChessType1
+				.ENDIF
+				mov @chessColor, eax
+
+				INVOKE GdipDrawImageRectI, graphics, @chessColor,
+					@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+					@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+					CELL_WIDTH, CELL_HEIGHT
+				
+				add @x, ROW_CELL_SPACE
+				inc @j
+				add @chessAddress, 2 * TYPE CELL
+
+			.UNTIL @j == 5
+		.ENDIF
+		add @y, COLUMN_CELL_SPACE	; 行y值
+		inc @i
+	.UNTIL @i == 17
 
 	;invoke DeleteObject,@hFont
 	;invoke DeleteDC,@hdcMemBuffer
@@ -236,6 +357,8 @@ InitLoadProc PROC,
 ; 加载资源文件
 ;-----------------------------------------------------
 	INVOKE GdipLoadImageFromFile, OFFSET chessBg, ADDR hChessBg
+	INVOKE GdipLoadImageFromFile, OFFSET chessRed, ADDR hChessType0
+	INVOKE GdipLoadImageFromFile, OFFSET chessPurple, ADDR hChessType1
 	ret
 InitLoadProc ENDP
 
