@@ -1,41 +1,79 @@
 TITLE Windows Application                   (WinApp.asm)
-
+.386
+.model flat,stdcall
+option casemap:none
+.stack 4096
 ; This program displays a resizable application window and
 ; several popup message boxes.
 ; Thanks to Tom Joyce for creating a prototype
 ; from which this program was derived.
 ; Last update: 9/24/01
 
-INCLUDE Irvine32.inc
-INCLUDE GraphWin.inc
+include	 windows.inc
+include	 gdiplus.inc
+includelib  gdiplus.lib
+include	 user32.inc
+includelib  user32.lib
+include	 kernel32.inc
+includelib  kernel32.lib
+include	 imm32.inc
+includelib  imm32.lib
+include	 msimg32.inc
+includelib  msimg32.lib
+
+.const
+line equ 9
+boardsize equ 289 ;(2 * 9 - 1) ^ 2
+;chessBg equ BMP_CHESSBG
 
 ;==================== DATA =======================
 .data
 
-cell STRUCT
+CELL STRUCT
     m_color    BYTE    ?    ;颜色
     m_type     BYTE    0    ;道具类型(0为普通格，1为炸弹)
     m_frame    BYTE    0    ;帧动画
-cell ENDS
+CELL ENDS
+
+
+chessboard CELL 289 dup(<0,0,0>)
 
 
 winRect   RECT <>
 hMainWnd  DWORD ?
 hInstance DWORD ?
+hDC       DWORD ?
+
 
 ; 定义窗口结构体
-MainWin WNDCLASS <NULL,WinProc,NULL,NULL,NULL,NULL,NULL, \
-	COLOR_WINDOW,NULL,szClassName>
-msg MSGStruct <>
+MainWin WNDCLASSEX <NULL, NULL, WinProc,NULL,NULL,NULL,NULL,NULL, \
+	COLOR_WINDOW,NULL,szClassName, NULL>
+msg MSG <>
 
 
 szWindowName  BYTE "NanoChess",0
 szClassName   BYTE "ASMWin",0
+m_GdiplusToken	DWORD 0;
+graphics		DWORD 0;
 
-WindowName  BYTE "ASM Windows App",0
-className   BYTE "ASMWin",0
+hChessBg  DWORD 0
 
+$$Unicode MACRO name, string
+	&name	LABEL BYTE
+	FORC	char, string
+		DB '&char', 0
+	ENDM
+		DB 0, 0
+ENDM
 
+$$Unicode chessBg, chessBg.png
+; proc声明
+
+InitLoadProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
+PaintProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
+StartupInput		GdiplusStartupInput <1, NULL, FALSE, 0>
+
+;------------------------
 .code
 
 
@@ -49,6 +87,9 @@ WinMain PROC
 	mov hInstance, eax
 	mov MainWin.hInstance, eax
 
+	mov MainWin.cbSize, sizeof WNDCLASSEX
+	mov MainWin.style, CS_HREDRAW or CS_VREDRAW
+
 	; 获取图标和光标
 	INVOKE LoadIcon, NULL, IDI_APPLICATION
 	mov MainWin.hIcon, eax
@@ -57,14 +98,34 @@ WinMain PROC
 
 	;mov MainWin.cbSize, sizeof WNDCLASSEX
 	;mov MainWin.style, CS_HREDRAW or CS_VREDRAW
-	;mov MainWin.hbrBackground, COLOR_WINDOW + 1
+	mov MainWin.hbrBackground, COLOR_MENUTEXT + 1
 
 	; 注册窗口
-	INVOKE RegisterClass, ADDR MainWin
+	INVOKE RegisterClassEx, ADDR MainWin
 	.IF eax == 0
 	  ;call ErrorHandler
 	  jmp Exit_Program
 	.ENDIF
+
+	; 初始化GDI+
+	INVOKE	GdiplusStartup, ADDR m_GdiplusToken, ADDR StartupInput, 0
+
+	;INVOKE GetDC, hInstance
+	;mov hDC, eax
+
+
+	;mov	hWnd,rax
+    	;invoke  GetDC,rax       ;получить DC
+    	;mov	hDC,rax
+        ;lea	edx,gdiHgraphics
+	;invoke	GdipCreateFromHDC,eax; Get graphics "object" from DC handle
+	;HDC hdc = ::GetDC(hwnd);
+;HDC memDC = ::CreateCompatibleDC(hdc);
+;HBITMAP memBitmap = ::CreateCompatibleBitmap(hdc,wndSize.cx,wndSize.cy);
+;::SelectObject(memDC,memBitmap);
+;Gdiplus::Image image(L"pic.png");
+;Gdiplus::Graphics graphics(memDC);
+
 
 	; Create the application's main window.
 	; Returns a handle to the main window in EAX.
@@ -79,6 +140,13 @@ WinMain PROC
 	  call ErrorHandler
 	  jmp  Exit_Program
 	.ENDIF
+
+	;INVOKE  GetDC, hMainWnd      
+    ;;mov	hDC, eax
+	;
+	;INVOKE GdipCreateFromHWND, hMainWnd, OFFSET graphics
+
+	;INVOKE GdipCreateFromHDC, hDC, OFFSET graphics
 
 	; Show and draw the window.
 	INVOKE ShowWindow, hMainWnd, SW_SHOW
@@ -101,28 +169,83 @@ Message_Loop:
 
 Exit_Program:
 	  INVOKE ExitProcess,0
-
+	  ret
 WinMain ENDP
 
 ;-----------------------------------------------------
-WinProc PROC,
+WinProc PROC uses ebx edi esi,
 	hWnd:DWORD, localMsg:DWORD, wParam:DWORD, lParam:DWORD
 ; windows窗口消息处理
 ;-----------------------------------------------------
 	mov eax, localMsg
 
-	;.IF eax == WM_LBUTTONDOWN		; mouse button?
+	.IF eax == WM_PAINT
+		INVOKE PaintProc, hWnd, wParam, lParam
+		;INVOKE GdipDrawImage, graphics, hChessBg, 0, 0
+		;INVOKE GdipDrawImage, graphics, hChessBg, 200, 200
+		
+	.ELSEIF eax == WM_CREATE
+		INVOKE InitLoadProc, hWnd, wParam, lParam
+
+
+	.ELSEIF eax == WM_LBUTTONDOWN		; mouse button?
 	  ;INVOKE MessageBox, hWnd, ADDR PopupText,
 	    ;ADDR PopupTitle, MB_OK
 	  ;jmp WinProcExit
-	;.ELSE		; other message?
+	.ELSE		; other message?
 	  INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
 	  jmp WinProcExit
-	;.ENDIF
+	.ENDIF
 
 WinProcExit:
 	ret
 WinProc ENDP
+
+;-----------------------------------------------------
+PaintProc PROC,
+	hWnd:DWORD, wParam:DWORD, lParam:DWORD
+; 绘制
+;-----------------------------------------------------
+	local   @ps:PAINTSTRUCT
+	local   @blankBmp:HBITMAP
+	local   @hdcWindow:DWORD
+	local   @hdcLoadBmp:DWORD
+	local   @hdcMemBuffer:DWORD
+	local	@stRect:RECT
+	local	@hFont
+
+	invoke  BeginPaint,hWnd,addr @ps
+	mov hDC,eax
+	INVOKE GdipCreateFromHDC, hDC, OFFSET graphics
+	INVOKE GdipSetSmoothingMode, graphics, SmoothingModeAntiAlias
+
+	;invoke CreateCompatibleDC, @hdcWindow
+	;mov @hdcMemBuffer,eax
+	;invoke CreateCompatibleDC, @hdcWindow
+	;mov @hdcLoadBmp,eax
+	;invoke CreateCompatibleBitmap,@hdcWindow,576,768
+	;mov @blankBmp,eax
+	;invoke SelectObject,@hdcMemBuffer,@blankBmp
+
+
+	INVOKE GdipDrawImageI, graphics, hChessBg, 0, 0
+	INVOKE GdipDrawImageI, graphics, hChessBg, 200, 200
+
+	;invoke DeleteObject,@hFont
+	;invoke DeleteDC,@hdcMemBuffer
+	;invoke DeleteDC,@hdcLoadBmp
+	invoke  EndPaint,hWnd,addr @ps
+	ret
+
+PaintProc ENDP
+;-----------------------------------------------------
+InitLoadProc PROC,
+	hWnd:DWORD, wParam:DWORD, lParam:DWORD
+; 加载资源文件
+;-----------------------------------------------------
+	INVOKE GdipLoadImageFromFile, OFFSET chessBg, ADDR hChessBg
+	ret
+InitLoadProc ENDP
 
 ;---------------------------------------------------
 ErrorHandler PROC
