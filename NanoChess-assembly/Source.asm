@@ -72,7 +72,7 @@ $$Unicode MACRO name, string
 ENDM
 
 ; png图片文件
-$$Unicode chessBg, chessBg.png
+$$Unicode chessBg, png\chessBg.png
 
 
 ; gdip加载图片资源指针
