@@ -131,12 +131,6 @@ GetRandomInt ENDP
 InitializeBoard PROC uses eax ecx edx
 	; 随机初始化整个棋盘，要求不能有三连元素
 	mov eax, 0
-	mov [possibleColor], 1
-	mov [possibleColor + 1], 2
-	mov [possibleColor + 2], 3
-	mov [possibleColor + 3], 4
-	mov [possibleColor + 4], 5
-	mov [possibleColor + 5], 6
 	.WHILE eax < 153
 		; 数组里index = 0 2 4 6 8是第一行棋子 10 12 14 16是第二行棋子（数组一行9个）
 		; 从而每个棋子和周围6个棋子的index的差值为-18 -10 -8 +8 +10 +18
@@ -146,6 +140,13 @@ InitializeBoard PROC uses eax ecx edx
 		; 此外，如果是前两列（17行9列），只需要向正上方和右上方检测
 		; 如果是第7/8列，需要向左上和正上方检测
 		; 其余情况需要向左上、正上、右上三个方向检测
+		mov [possibleColor], 1
+		mov [possibleColor + 1], 2
+		mov [possibleColor + 2], 3
+		mov [possibleColor + 3], 4
+		mov [possibleColor + 4], 5
+		mov [possibleColor + 5], 6
+
 		push eax
 		mov edx, 0
 		mov ecx, 9
@@ -361,13 +362,13 @@ InitializeBoard PROC uses eax ecx edx
 
 		push eax
 		mov edx, eax						; 用edx存一下当前编号
-		mov eax, 0
-		.WHILE eax == 0						; 循环直到找到一种可用颜色为止
+		mov ecx, 0
+		.WHILE ecx == 0						; 循环直到找到一种可用颜色为止
 			invoke GetRandomInt, 0, 5		; 获取一个0-5之间的随机数，存在eax(al)中
 			add eax, OFFSET possibleColor
-			mov eax, [eax]
+			mov ecx, 0
+			mov cl, byte ptr [eax]
 		.ENDW
-		mov ecx, eax
 		mov eax, edx
 		mov edx, 4
 		mul edx
@@ -379,12 +380,11 @@ InitializeBoard PROC uses eax ecx edx
 	.ENDW
 	ret
 InitializeBoard ENDP
-
 ;-----------------------
 WinMain PROC
 ; windows窗口程序入口函数
 ;--------------
-	
+
 	; 获得当前程序句柄
 	INVOKE GetModuleHandle, NULL
 	mov hInstance, eax
@@ -516,7 +516,6 @@ PaintProc PROC,
 	;invoke CreateCompatibleBitmap,@hdcWindow,576,768
 	;mov @blankBmp,eax
 	;invoke SelectObject,@hdcMemBuffer,@blankBmp
-	invoke InitializeBoard
 
 	;INVOKE GdipDrawImageI, graphics, hChessBg, 0, 0
 	;INVOKE GdipDrawImageI, graphics, hChessBg, 200, 200
