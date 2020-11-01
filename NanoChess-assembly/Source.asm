@@ -105,9 +105,280 @@ InitLoadProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 PaintProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 StartupInput		GdiplusStartupInput <1, NULL, FALSE, 0>
 
+; 记录有哪些可用颜色，不可用的标为0
+possibleColor BYTE 1,2,3,4,5,6					
+
 ;------------------------
 .code
 
+
+; 获取first到second闭区间内的伪随机整数，以eax返回
+GetRandomInt PROC uses ecx edx first:DWORD, second:DWORD
+	invoke GetTickCount ; 取得随机数种子，也可用别的方法代替
+	mov ecx, 23         ; X = ecx = 23
+	mul ecx             ; eax = eax * X
+	add eax, 7          ; eax = eax + Y （Y = 7）
+	mov ecx, second     ; ecx = 上限
+	sub ecx, first      ; ecx = 上限 - 下限
+	inc ecx             ; Z = ecx + 1 （得到了范围）
+	xor edx, edx        ; edx = 0
+	div ecx             ; eax = eax mod Z （余数在edx里面）
+	add edx, first      ; 修正产生的随机数的范围
+	mov eax, edx        ; eax = Rand_Number
+	ret
+GetRandomInt ENDP
+
+InitializeBoard PROC uses eax ecx edx
+	; 随机初始化整个棋盘，要求不能有三连元素
+	mov eax, 0
+	mov [possibleColor], 1
+	mov [possibleColor + 1], 2
+	mov [possibleColor + 2], 3
+	mov [possibleColor + 3], 4
+	mov [possibleColor + 4], 5
+	mov [possibleColor + 5], 6
+	.WHILE eax < 153
+		; 数组里index = 0 2 4 6 8是第一行棋子 10 12 14 16是第二行棋子（数组一行9个）
+		; 从而每个棋子和周围6个棋子的index的差值为-18 -10 -8 +8 +10 +18
+		; 规定颜色有1,2,3,4,5,6六种
+		; 如果是前两行，不需要检测
+		; 编号36之前的节点（第3/4行）不需要向上方检测
+		; 此外，如果是前两列（17行9列），只需要向正上方和右上方检测
+		; 如果是第7/8列，需要向左上和正上方检测
+		; 其余情况需要向左上、正上、右上三个方向检测
+		push eax
+		mov edx, 0
+		mov ecx, 9
+		div ecx	; 获取当前是第几列并存在edx中
+		pop eax
+		.IF eax >= 18
+			.IF edx == 0 || edx == 1
+				push eax
+				push edx
+				sub eax, 8
+				mov ecx, 4
+				mul ecx
+				add eax, OFFSET chessboard
+				mov ecx, 0
+				mov cl, byte ptr [eax]							; 检测右上方第一个格子
+				add ecx, OFFSET possibleColor
+				mov eax, 0
+				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				pop edx
+				pop eax
+
+				push eax
+				push edx
+				sub eax, 16
+				mov ecx, 4
+				mul ecx
+				add eax, OFFSET chessboard
+				mov ecx, 0
+				mov cl, byte ptr [eax]							; 检测右上方第二个格子
+				add ecx, OFFSET possibleColor
+				mov eax, 0
+				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				pop edx
+				pop eax
+				
+				.IF eax >= 36								; 18,28两个格子只需要向右上检测
+					push eax
+					push edx
+					sub eax, 18
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					mov ecx, 0
+					mov cl, byte ptr [eax]					; 检测正上方第一个格子
+					add ecx, OFFSET possibleColor
+					mov eax, 0
+					mov [ecx], al							; 将这种颜色标为0，即禁止选择		
+					pop edx
+					pop eax
+
+					push eax
+					push edx
+					sub eax, 36
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					mov ecx, 0
+					mov cl, byte ptr [eax]					; 检测正上方第二个格子
+					add ecx, OFFSET possibleColor
+					mov eax, 0
+					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+					pop edx
+					pop eax
+				.ENDIF
+
+			.ELSEIF edx == 7 || edx == 8
+				push eax
+				push edx
+				sub eax, 10
+				mov ecx, 4
+				mul ecx
+				add eax, OFFSET chessboard
+				mov ecx, 0
+				mov cl, byte ptr [eax]						; 检测左上方第一个格子
+				add ecx, OFFSET possibleColor
+				mov eax, 0
+				mov [ecx], al								; 将这种颜色标为0，即禁止选择
+				pop edx
+				pop eax
+
+				push eax
+				push edx
+				sub eax, 20
+				mov ecx, 4
+				mul ecx
+				add eax, OFFSET chessboard
+				mov ecx, 0
+				mov cl, byte ptr [eax]							; 检测左上方第二个格子
+				add ecx, OFFSET possibleColor
+				mov eax, 0
+				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				pop edx
+				pop eax
+
+				.IF eax >= 36								; 26,34两个格子只需要向左上检测
+					push eax
+					push edx
+					sub eax, 18
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					mov ecx, 0
+					mov cl, byte ptr [eax]							; 检测正上方第一个格子
+					add ecx, OFFSET possibleColor
+					mov eax, 0
+					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+					pop edx
+					pop eax
+
+					push eax
+					push edx
+					sub eax, 36
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					mov ecx, 0
+					mov cl, byte ptr [eax]							; 检测正上方第二个格子
+					add ecx, OFFSET possibleColor
+					mov eax, 0
+					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+					pop edx
+					pop eax
+				.ENDIF
+			
+			.ELSE
+				push eax
+				push edx
+				sub eax, 10
+				mov ecx, 4
+				mul ecx
+				add eax, OFFSET chessboard
+				mov ecx, 0
+				mov cl, byte ptr [eax]							; 检测左上方第一个格子
+				add ecx, OFFSET possibleColor
+				mov eax, 0
+				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				pop edx
+				pop eax
+
+				push eax
+				push edx
+				sub eax, 20
+				mov ecx, 4
+				mul ecx
+				add eax, OFFSET chessboard
+				mov ecx, 0
+				mov cl, byte ptr [eax]							; 检测左上方第二个格子
+				add ecx, OFFSET possibleColor
+				mov eax, 0
+				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				pop edx
+				pop eax
+
+				push eax
+				push edx
+				sub eax, 8
+				mov ecx, 4
+				mul ecx
+				add eax, OFFSET chessboard
+				mov ecx, 0
+				mov cl, byte ptr [eax]							; 检测右上方第一个格子
+				add ecx, OFFSET possibleColor
+				mov eax, 0
+				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				pop edx
+				pop eax
+
+				push eax
+				push edx
+				sub eax, 16
+				mov ecx, 4
+				mul ecx
+				add eax, OFFSET chessboard
+				mov ecx, 0
+				mov cl, byte ptr [eax]							; 检测右上方第二个格子
+				add ecx, OFFSET possibleColor
+				mov eax, 0
+				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				pop edx
+				pop eax
+
+				.IF eax >= 36								; 26,34两个格子只需要向左上检测
+					push eax
+					push edx
+					sub eax, 18
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					mov ecx, 0
+					mov cl, byte ptr [eax]							; 检测正上方第一个格子
+					add ecx, OFFSET possibleColor
+					mov eax, 0
+					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+					pop edx
+					pop eax
+
+					push eax
+					push edx
+					sub eax, 36
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					mov ecx, 0
+					mov cl, byte ptr [eax]							; 检测正上方第二个格子
+					add ecx, OFFSET possibleColor
+					mov eax, 0
+					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+					pop edx
+					pop eax
+				.ENDIF
+			.ENDIF
+		.ENDIF
+
+		push eax
+		mov edx, eax						; 用edx存一下当前编号
+		mov eax, 0
+		.WHILE eax == 0						; 循环直到找到一种可用颜色为止
+			invoke GetRandomInt, 0, 5		; 获取一个0-5之间的随机数，存在eax(al)中
+			add eax, OFFSET possibleColor
+			mov eax, [eax]
+		.ENDW
+		mov ecx, eax
+		mov eax, edx
+		mov edx, 4
+		mul edx
+		add eax, OFFSET chessboard
+		mov [eax], cl		; 完成颜色初始化
+		pop eax
+
+		add eax, 2	; 有效格子等价于下标为偶数
+	.ENDW
+	ret
+InitializeBoard ENDP
 
 ;-----------------------
 WinMain PROC
@@ -245,7 +516,7 @@ PaintProc PROC,
 	;invoke CreateCompatibleBitmap,@hdcWindow,576,768
 	;mov @blankBmp,eax
 	;invoke SelectObject,@hdcMemBuffer,@blankBmp
-
+	invoke InitializeBoard
 
 	;INVOKE GdipDrawImageI, graphics, hChessBg, 0, 0
 	;INVOKE GdipDrawImageI, graphics, hChessBg, 200, 200
