@@ -10,6 +10,8 @@ option casemap:none
 ; Last update: 9/24/01
 
 include	 windows.inc
+include	 gdi32.inc
+includelib  gdi32.lib
 include	 gdiplus.inc
 includelib  gdiplus.lib
 include	 user32.inc
@@ -501,6 +503,36 @@ Exit_Program:
 	  ret
 WinMain ENDP
 
+;-------------------
+TimerUpdate PROC,
+	hWnd:DWORD
+; 更新数据（m_color, m_scale最好只在其中更新）
+;----------------
+	local	@i:DWORD
+	local	@j:DWORD
+	local	@cell:CELL
+	local	@chessAddress:DWORD
+	mov @chessAddress, OFFSET chessboard
+	mov eax, @chessAddress
+	mov eax, [eax]
+	mov @cell, eax
+
+	.IF @cell.m_scale == 0
+		mov eax, 100
+		mov @cell.m_scale, al
+	.ELSE
+		sub @cell.m_scale, 10
+	.ENDIF
+	mov eax, @cell
+	mov chessboard, eax
+
+	INVOKE InvalidateRect, hWnd, NULL, FALSE
+	ret
+
+TimerUpdate ENDP
+;-------------------
+
+
 ;-----------------------------------------------------
 WinProc PROC uses ebx edi esi,
 	hWnd:DWORD, localMsg:DWORD, wParam:DWORD, lParam:DWORD
@@ -517,7 +549,7 @@ WinProc PROC uses ebx edi esi,
 		INVOKE InitLoadProc, hWnd, wParam, lParam
 
 	.ELSEIF eax == WM_TIMER
-		INVOKE InvalidateRect, hWnd, NULL, FALSE
+		INVOKE TimerUpdate, hWnd
 
 	.ELSEIF eax == WM_LBUTTONDOWN		; mouse button?
 	  ;INVOKE MessageBox, hWnd, ADDR PopupText,
@@ -558,11 +590,18 @@ PaintProc PROC,
 
 	invoke  BeginPaint,hWnd,addr @ps
 	mov hDC,eax
-	INVOKE GdipCreateFromHDC, hDC, OFFSET graphics
-	INVOKE GdipSetSmoothingMode, graphics, SmoothingModeAntiAlias
+	;INVOKE GdipCreateFromHDC, hDC, OFFSET graphics
+	;INVOKE GdipSetSmoothingMode, graphics, SmoothingModeAntiAlias
 
-	;invoke CreateCompatibleDC, @hdcWindow
-	;mov @hdcMemBuffer,eax
+	invoke CreateCompatibleDC, hDC
+	mov @hdcMemBuffer,eax
+
+	INVOKE CreateCompatibleBitmap, hDC, WINDOW_WIDTH, WINDOW_HEIGHT
+	mov @blankBmp, eax
+	INVOKE SelectObject, @hdcMemBuffer, @blankBmp
+
+	INVOKE GdipCreateFromHDC, @hdcMemBuffer, OFFSET graphics
+	INVOKE GdipSetSmoothingMode, graphics, SmoothingModeAntiAlias
 	;invoke CreateCompatibleDC, @hdcWindow
 	;mov @hdcLoadBmp,eax
 	;invoke CreateCompatibleBitmap,@hdcWindow,576,768
@@ -744,8 +783,9 @@ PaintProc PROC,
 		inc @i
 	.UNTIL @i == 17
 
+	INVOKE BitBlt, hDC ,0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, @hdcMemBuffer, 0, 0, SRCCOPY
 	;invoke DeleteObject,@hFont
-	;invoke DeleteDC,@hdcMemBuffer
+	invoke DeleteDC, @hdcMemBuffer
 	;invoke DeleteDC,@hdcLoadBmp
 	invoke  EndPaint,hWnd,addr @ps
 	ret
