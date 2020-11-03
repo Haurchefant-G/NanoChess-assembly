@@ -32,16 +32,22 @@ WINDOW_TITLEBARHEIGHT equ 32
 BOARD_X equ 6
 BOARD_Y equ 110
 
-CELL_HEIGHT equ 76
-COLUMN_CELL_SPACE equ 38
 CELL_WIDTH equ 84
+CELL_HEIGHT equ 76
+ROW_CELL_SPACE equ 126
+COLUMN_CELL_SPACE equ 38
+CHESS_WIDTH equ 66
+CHESS_HEIGHT equ 60
+
 ; HALF_CELL_WIDTH equ
 EVEN_CELL_START equ 63
-ROW_CELL_SPACE equ 126
 ;chessBg equ BMP_CHESSBG
 
 ;==================== DATA =======================
 .data
+
+memnum100 DWORD 100
+memnum2 DWORD 2
 
 ; 棋格结构体
 CELL STRUCT
@@ -52,7 +58,7 @@ CELL STRUCT
 CELL ENDS
 
 ; 棋盘
-chessboard CELL 153 dup(<1,0,0,1>)
+chessboard CELL 153 dup(<1,0,0,100>)
 
 
 ; win32相关
@@ -87,22 +93,27 @@ ENDM
 
 ; png图片文件
 $$Unicode chessBg, png\chessBg.png
-$$Unicode chessRed, png\chessRed.png			; type0
-$$Unicode chessPurple, png\chessPurple.png		; type1
+$$Unicode chessRed, png\chessRed.png			; type1
+$$Unicode chessPurple, png\chessPurple.png		; type2
+$$Unicode chessGreen, png\chessGreen.png		; type3
+$$Unicode chessOrange, png\chessOrange.png		; type4
+$$Unicode chessYellow, png\chessYellow.png		; type5
+$$Unicode chessBlue, png\chessBlue.png			; type6
 
 
 ; gdip加载图片资源指针
 hChessBg  DWORD 0
-hChessType0  DWORD 0
 hChessType1  DWORD 0
 hChessType2  DWORD 0
 hChessType3  DWORD 0
 hChessType4  DWORD 0
 hChessType5  DWORD 0
+hChessType6  DWORD 0
 
 ; proc声明
 InitLoadProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 PaintProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
+InitializeBoard PROTO STDCALL
 StartupInput		GdiplusStartupInput <1, NULL, FALSE, 0>
 
 ; 记录有哪些可用颜色，不可用的标为0
@@ -436,6 +447,8 @@ WinMain PROC
 	INVOKE ShowWindow, hMainWnd, SW_SHOW
 	INVOKE UpdateWindow, hMainWnd
 
+	INVOKE InitializeBoard
+
 
 ; Begin the program's message-handling loop.
 Message_Loop:
@@ -501,6 +514,10 @@ PaintProc PROC,
 	local	@j:DWORD
 	local	@x:DWORD
 	local	@y:DWORD
+	local	@chessx:DWORD
+	local	@chessy:DWORD
+	local	@chessw:DWORD
+	local	@chessh:DWORD
 	local	@chessAddress:DWORD
 	local	@chessColor:DWORD
 
@@ -567,17 +584,59 @@ PaintProc PROC,
 				mov eax, @chessAddress
 				mov eax, [eax]
 				mov @cell, eax
-				.IF @cell.m_color == 0
-					mov eax, hChessType0
-				.ELSEIF @cell.m_color == 1
+				.IF @cell.m_color == 1
 					mov eax, hChessType1
+				.ELSEIF @cell.m_color == 2
+					mov eax, hChessType2
+				.ELSEIF @cell.m_color == 3
+					mov eax, hChessType3
+				.ELSEIF @cell.m_color == 4
+					mov eax, hChessType4
+				.ELSEIF @cell.m_color == 5
+					mov eax, hChessType5
+				.ELSEIF @cell.m_color == 6
+					mov eax, hChessType6
 				.ENDIF
 				mov @chessColor, eax
 
+
+				.IF @cell.m_scale != 100
+					mov eax, CHESS_WIDTH
+					mul @cell.m_scale
+					mov edx, 0
+					div memnum100
+					mov @chessw, eax
+					mov eax, CHESS_HEIGHT
+					mul @cell.m_scale
+					mov edx, 0
+					div memnum100
+					mov @chessh, eax
+				.ELSEIF
+					mov eax, CHESS_WIDTH
+					mov @chessw, eax
+					mov eax, CHESS_HEIGHT
+					mov @chessh, eax
+				.ENDIF
+				mov eax, CELL_WIDTH
+				sub eax, @chessw
+				mov edx, 0
+				div memnum2
+				add eax, @x
+				mov @chessx, eax
+				mov eax, CELL_HEIGHT
+				sub eax, @chessh
+				mov edx, 0
+				div memnum2
+				add eax, @y
+				mov @chessy, eax
+
+
+
+
 				INVOKE GdipDrawImageRectI, graphics, @chessColor,
-					@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
-					@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
-					CELL_WIDTH, CELL_HEIGHT
+					@chessx,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+					@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+					@chessw, @chessh
 				
 				add @x, ROW_CELL_SPACE
 				inc @j
@@ -590,17 +649,55 @@ PaintProc PROC,
 				mov eax, @chessAddress
 				mov eax, [eax]
 				mov @cell, eax
-				.IF @cell.m_color == 0
-					mov eax, hChessType0
-				.ELSEIF @cell.m_color == 1
+				.IF @cell.m_color == 1
 					mov eax, hChessType1
+				.ELSEIF @cell.m_color == 2
+					mov eax, hChessType2
+				.ELSEIF @cell.m_color == 3
+					mov eax, hChessType3
+				.ELSEIF @cell.m_color == 4
+					mov eax, hChessType4
+				.ELSEIF @cell.m_color == 5
+					mov eax, hChessType5
+				.ELSEIF @cell.m_color == 6
+					mov eax, hChessType6
 				.ENDIF
 				mov @chessColor, eax
 
+				.IF @cell.m_scale != 100
+					mov eax, CHESS_WIDTH
+					mul @cell.m_scale
+					mov edx, 0
+					div memnum100
+					mov @chessw, eax
+					mov eax, CHESS_HEIGHT
+					mul @cell.m_scale
+					mov edx, 0
+					div memnum100
+					mov @chessh, eax
+				.ELSEIF
+					mov eax, CHESS_WIDTH
+					mov @chessw, eax
+					mov eax, CHESS_HEIGHT
+					mov @chessh, eax
+				.ENDIF
+				mov eax, CELL_WIDTH
+				sub eax, @chessw
+				mov edx, 0
+				div memnum2
+				add eax, @x
+				mov @chessx, eax
+				mov eax, CELL_HEIGHT
+				sub eax, @chessh
+				mov edx, 0
+				div memnum2
+				add eax, @y
+				mov @chessy, eax
+
 				INVOKE GdipDrawImageRectI, graphics, @chessColor,
-					@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
-					@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
-					CELL_WIDTH, CELL_HEIGHT
+					@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
+					@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+					@chessw, @chessh
 				
 				add @x, ROW_CELL_SPACE
 				inc @j
@@ -627,8 +724,12 @@ InitLoadProc PROC,
 ; 加载资源文件
 ;-----------------------------------------------------
 	INVOKE GdipLoadImageFromFile, OFFSET chessBg, ADDR hChessBg
-	INVOKE GdipLoadImageFromFile, OFFSET chessRed, ADDR hChessType0
-	INVOKE GdipLoadImageFromFile, OFFSET chessPurple, ADDR hChessType1
+	INVOKE GdipLoadImageFromFile, OFFSET chessRed, ADDR hChessType1
+	INVOKE GdipLoadImageFromFile, OFFSET chessPurple, ADDR hChessType2
+	INVOKE GdipLoadImageFromFile, OFFSET chessGreen, ADDR hChessType3
+	INVOKE GdipLoadImageFromFile, OFFSET chessOrange, ADDR hChessType4
+	INVOKE GdipLoadImageFromFile, OFFSET chessYellow, ADDR hChessType5
+	INVOKE GdipLoadImageFromFile, OFFSET chessBlue, ADDR hChessType6
 	ret
 InitLoadProc ENDP
 
