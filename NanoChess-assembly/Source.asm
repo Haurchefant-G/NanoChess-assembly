@@ -163,6 +163,7 @@ InitializeBoard PROC uses eax ecx edx
 				mov ecx, 0
 				mov cl, byte ptr [eax]							; 检测右上方第一个格子
 				add ecx, OFFSET possibleColor
+				dec ecx
 				mov eax, 0
 				mov [ecx], al							; 将这种颜色标为0，即禁止选择
 				pop edx
@@ -177,6 +178,7 @@ InitializeBoard PROC uses eax ecx edx
 				mov ecx, 0
 				mov cl, byte ptr [eax]							; 检测右上方第二个格子
 				add ecx, OFFSET possibleColor
+				dec ecx
 				mov eax, 0
 				mov [ecx], al							; 将这种颜色标为0，即禁止选择
 				pop edx
@@ -192,6 +194,7 @@ InitializeBoard PROC uses eax ecx edx
 					mov ecx, 0
 					mov cl, byte ptr [eax]					; 检测正上方第一个格子
 					add ecx, OFFSET possibleColor
+					dec ecx
 					mov eax, 0
 					mov [ecx], al							; 将这种颜色标为0，即禁止选择		
 					pop edx
@@ -206,6 +209,7 @@ InitializeBoard PROC uses eax ecx edx
 					mov ecx, 0
 					mov cl, byte ptr [eax]					; 检测正上方第二个格子
 					add ecx, OFFSET possibleColor
+					dec ecx
 					mov eax, 0
 					mov [ecx], al							; 将这种颜色标为0，即禁止选择
 					pop edx
@@ -222,6 +226,7 @@ InitializeBoard PROC uses eax ecx edx
 				mov ecx, 0
 				mov cl, byte ptr [eax]						; 检测左上方第一个格子
 				add ecx, OFFSET possibleColor
+				dec ecx
 				mov eax, 0
 				mov [ecx], al								; 将这种颜色标为0，即禁止选择
 				pop edx
@@ -236,6 +241,7 @@ InitializeBoard PROC uses eax ecx edx
 				mov ecx, 0
 				mov cl, byte ptr [eax]							; 检测左上方第二个格子
 				add ecx, OFFSET possibleColor
+				dec ecx
 				mov eax, 0
 				mov [ecx], al							; 将这种颜色标为0，即禁止选择
 				pop edx
@@ -251,6 +257,7 @@ InitializeBoard PROC uses eax ecx edx
 					mov ecx, 0
 					mov cl, byte ptr [eax]							; 检测正上方第一个格子
 					add ecx, OFFSET possibleColor
+					dec ecx
 					mov eax, 0
 					mov [ecx], al							; 将这种颜色标为0，即禁止选择
 					pop edx
@@ -265,6 +272,7 @@ InitializeBoard PROC uses eax ecx edx
 					mov ecx, 0
 					mov cl, byte ptr [eax]							; 检测正上方第二个格子
 					add ecx, OFFSET possibleColor
+					dec ecx
 					mov eax, 0
 					mov [ecx], al							; 将这种颜色标为0，即禁止选择
 					pop edx
@@ -281,6 +289,7 @@ InitializeBoard PROC uses eax ecx edx
 				mov ecx, 0
 				mov cl, byte ptr [eax]							; 检测左上方第一个格子
 				add ecx, OFFSET possibleColor
+				dec ecx
 				mov eax, 0
 				mov [ecx], al							; 将这种颜色标为0，即禁止选择
 				pop edx
@@ -295,6 +304,7 @@ InitializeBoard PROC uses eax ecx edx
 				mov ecx, 0
 				mov cl, byte ptr [eax]							; 检测左上方第二个格子
 				add ecx, OFFSET possibleColor
+				dec ecx
 				mov eax, 0
 				mov [ecx], al							; 将这种颜色标为0，即禁止选择
 				pop edx
@@ -309,6 +319,7 @@ InitializeBoard PROC uses eax ecx edx
 				mov ecx, 0
 				mov cl, byte ptr [eax]							; 检测右上方第一个格子
 				add ecx, OFFSET possibleColor
+				dec ecx
 				mov eax, 0
 				mov [ecx], al							; 将这种颜色标为0，即禁止选择
 				pop edx
@@ -323,6 +334,7 @@ InitializeBoard PROC uses eax ecx edx
 				mov ecx, 0
 				mov cl, byte ptr [eax]							; 检测右上方第二个格子
 				add ecx, OFFSET possibleColor
+				dec ecx
 				mov eax, 0
 				mov [ecx], al							; 将这种颜色标为0，即禁止选择
 				pop edx
@@ -338,6 +350,7 @@ InitializeBoard PROC uses eax ecx edx
 					mov ecx, 0
 					mov cl, byte ptr [eax]							; 检测正上方第一个格子
 					add ecx, OFFSET possibleColor
+					dec ecx
 					mov eax, 0
 					mov [ecx], al							; 将这种颜色标为0，即禁止选择
 					pop edx
@@ -352,6 +365,7 @@ InitializeBoard PROC uses eax ecx edx
 					mov ecx, 0
 					mov cl, byte ptr [eax]							; 检测正上方第二个格子
 					add ecx, OFFSET possibleColor
+					dec ecx
 					mov eax, 0
 					mov [ecx], al							; 将这种颜色标为0，即禁止选择
 					pop edx
