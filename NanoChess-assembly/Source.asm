@@ -177,23 +177,26 @@ InitializeBoard PROC uses eax ecx edx
 				add eax, OFFSET chessboard
 				mov ecx, 0
 				mov cl, byte ptr [eax]							; 检测右上方第一个格子
-				add ecx, OFFSET possibleColor
-				mov eax, 0
-				mov [ecx], al							; 将这种颜色标为0，即禁止选择
 				pop edx
 				pop eax
 
 				push eax
 				push edx
+				push ecx
 				sub eax, 16
 				mov ecx, 4
 				mul ecx
+				pop ecx
 				add eax, OFFSET chessboard
-				mov ecx, 0
-				mov cl, byte ptr [eax]							; 检测右上方第二个格子
-				add ecx, OFFSET possibleColor
-				mov eax, 0
-				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				mov ch, byte ptr [eax]							; 检测右上方第二个格子
+				.IF cl == ch
+					; 如果连续两个格子颜色相同，禁止选择这种颜色
+					mov ch, 0
+					add ecx, OFFSET possibleColor
+					dec ecx
+					mov eax, 0
+					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				.ENDIF
 				pop edx
 				pop eax
 				
@@ -206,23 +209,26 @@ InitializeBoard PROC uses eax ecx edx
 					add eax, OFFSET chessboard
 					mov ecx, 0
 					mov cl, byte ptr [eax]					; 检测正上方第一个格子
-					add ecx, OFFSET possibleColor
-					mov eax, 0
-					mov [ecx], al							; 将这种颜色标为0，即禁止选择		
 					pop edx
 					pop eax
 
 					push eax
 					push edx
+					push ecx
 					sub eax, 36
 					mov ecx, 4
 					mul ecx
+					pop ecx
 					add eax, OFFSET chessboard
-					mov ecx, 0
-					mov cl, byte ptr [eax]					; 检测正上方第二个格子
-					add ecx, OFFSET possibleColor
-					mov eax, 0
-					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+					mov ch, byte ptr [eax]					; 检测正上方第二个格子
+					.IF cl == ch
+						; 如果连续两个格子颜色相同，禁止选择这种颜色
+						mov ch, 0
+						add ecx, OFFSET possibleColor
+						dec ecx
+						mov eax, 0
+						mov [ecx], al						; 将这种颜色标为0，即禁止选择
+					.ENDIF
 					pop edx
 					pop eax
 				.ENDIF
@@ -236,23 +242,26 @@ InitializeBoard PROC uses eax ecx edx
 				add eax, OFFSET chessboard
 				mov ecx, 0
 				mov cl, byte ptr [eax]						; 检测左上方第一个格子
-				add ecx, OFFSET possibleColor
-				mov eax, 0
-				mov [ecx], al								; 将这种颜色标为0，即禁止选择
 				pop edx
 				pop eax
 
 				push eax
 				push edx
+				push ecx
 				sub eax, 20
 				mov ecx, 4
 				mul ecx
+				pop ecx
 				add eax, OFFSET chessboard
-				mov ecx, 0
-				mov cl, byte ptr [eax]							; 检测左上方第二个格子
-				add ecx, OFFSET possibleColor
-				mov eax, 0
-				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				mov ch, byte ptr [eax]							; 检测左上方第二个格子
+				.IF cl == ch
+					; 如果连续两个格子颜色相同，禁止选择这种颜色
+					mov ch, 0
+					add ecx, OFFSET possibleColor
+					dec ecx
+					mov eax, 0
+					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				.ENDIF
 				pop edx
 				pop eax
 
@@ -265,23 +274,26 @@ InitializeBoard PROC uses eax ecx edx
 					add eax, OFFSET chessboard
 					mov ecx, 0
 					mov cl, byte ptr [eax]							; 检测正上方第一个格子
-					add ecx, OFFSET possibleColor
-					mov eax, 0
-					mov [ecx], al							; 将这种颜色标为0，即禁止选择
 					pop edx
 					pop eax
 
 					push eax
 					push edx
+					push ecx
 					sub eax, 36
 					mov ecx, 4
 					mul ecx
+					pop ecx
 					add eax, OFFSET chessboard
-					mov ecx, 0
-					mov cl, byte ptr [eax]							; 检测正上方第二个格子
-					add ecx, OFFSET possibleColor
-					mov eax, 0
-					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+					mov ch, byte ptr [eax]							; 检测正上方第二个格子
+					.IF cl == ch
+						; 如果连续两个格子颜色相同，禁止选择这种颜色
+						mov ch, 0
+						add ecx, OFFSET possibleColor
+						dec ecx
+						mov eax, 0
+						mov [ecx], al							; 将这种颜色标为0，即禁止选择
+					.ENDIF
 					pop edx
 					pop eax
 				.ENDIF
@@ -295,23 +307,26 @@ InitializeBoard PROC uses eax ecx edx
 				add eax, OFFSET chessboard
 				mov ecx, 0
 				mov cl, byte ptr [eax]							; 检测左上方第一个格子
-				add ecx, OFFSET possibleColor
-				mov eax, 0
-				mov [ecx], al							; 将这种颜色标为0，即禁止选择
 				pop edx
 				pop eax
 
 				push eax
 				push edx
+				push ecx
 				sub eax, 20
 				mov ecx, 4
 				mul ecx
+				pop ecx
 				add eax, OFFSET chessboard
-				mov ecx, 0
-				mov cl, byte ptr [eax]							; 检测左上方第二个格子
-				add ecx, OFFSET possibleColor
-				mov eax, 0
-				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				mov ch, byte ptr [eax]							; 检测左上方第二个格子
+				.IF cl == ch
+					; 如果连续两个格子颜色相同，禁止选择这种颜色
+					mov ch, 0
+					add ecx, OFFSET possibleColor
+					dec ecx
+					mov eax, 0
+					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				.ENDIF
 				pop edx
 				pop eax
 
@@ -323,23 +338,26 @@ InitializeBoard PROC uses eax ecx edx
 				add eax, OFFSET chessboard
 				mov ecx, 0
 				mov cl, byte ptr [eax]							; 检测右上方第一个格子
-				add ecx, OFFSET possibleColor
-				mov eax, 0
-				mov [ecx], al							; 将这种颜色标为0，即禁止选择
 				pop edx
 				pop eax
 
 				push eax
 				push edx
+				push ecx
 				sub eax, 16
 				mov ecx, 4
 				mul ecx
+				pop ecx
 				add eax, OFFSET chessboard
-				mov ecx, 0
-				mov cl, byte ptr [eax]							; 检测右上方第二个格子
-				add ecx, OFFSET possibleColor
-				mov eax, 0
-				mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				mov ch, byte ptr [eax]							; 检测右上方第二个格子
+				.IF cl == ch
+					; 如果连续两个格子颜色相同，禁止选择这种颜色
+					mov ch, 0
+					add ecx, OFFSET possibleColor
+					dec ecx
+					mov eax, 0
+					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+				.ENDIF
 				pop edx
 				pop eax
 
@@ -352,23 +370,26 @@ InitializeBoard PROC uses eax ecx edx
 					add eax, OFFSET chessboard
 					mov ecx, 0
 					mov cl, byte ptr [eax]							; 检测正上方第一个格子
-					add ecx, OFFSET possibleColor
-					mov eax, 0
-					mov [ecx], al							; 将这种颜色标为0，即禁止选择
 					pop edx
 					pop eax
 
 					push eax
 					push edx
+					push ecx
 					sub eax, 36
 					mov ecx, 4
 					mul ecx
+					pop ecx
 					add eax, OFFSET chessboard
-					mov ecx, 0
-					mov cl, byte ptr [eax]							; 检测正上方第二个格子
-					add ecx, OFFSET possibleColor
-					mov eax, 0
-					mov [ecx], al							; 将这种颜色标为0，即禁止选择
+					mov ch, byte ptr [eax]							; 检测正上方第二个格子
+					.IF cl == ch
+						; 如果连续两个格子颜色相同，禁止选择这种颜色
+						mov ch, 0
+						add ecx, OFFSET possibleColor
+						dec ecx
+						mov eax, 0
+						mov [ecx], al							; 将这种颜色标为0，即禁止选择
+					.ENDIF
 					pop edx
 					pop eax
 				.ENDIF
