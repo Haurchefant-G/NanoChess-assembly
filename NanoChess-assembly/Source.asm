@@ -45,6 +45,10 @@ CHESS_HEIGHT equ 60
 EVEN_CELL_START equ 63
 ;chessBg equ BMP_CHESSBG
 
+
+TIMER_GAMETIMER equ 1			; 游戏的默认计时器ID
+TIMER_GAMETIMER_ELAPSE equ 10	; 默认计时器刷新间隔的毫秒数
+
 ;==================== DATA =======================
 .data
 
@@ -507,10 +511,13 @@ WinProc PROC uses ebx edi esi,
 	.IF eax == WM_PAINT
 		; 调用绘图过程
 		INVOKE PaintProc, hWnd, wParam, lParam
+		INVOKE SetTimer, hWnd, TIMER_GAMETIMER, TIMER_GAMETIMER_ELAPSE, NULL
 		
 	.ELSEIF eax == WM_CREATE
 		INVOKE InitLoadProc, hWnd, wParam, lParam
 
+	.ELSEIF eax == WM_TIMER
+		INVOKE InvalidateRect, hWnd, NULL, FALSE
 
 	.ELSEIF eax == WM_LBUTTONDOWN		; mouse button?
 	  ;INVOKE MessageBox, hWnd, ADDR PopupText,

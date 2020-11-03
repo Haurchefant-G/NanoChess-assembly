@@ -40,9 +40,6 @@
     <Image Include="png\chessBorder.png">
       <Filter>Resource Files\PNG</Filter>
     </Image>
-    <Image Include="png\chessGreen.gif">
-      <Filter>Resource Files\PNG</Filter>
-    </Image>
     <Image Include="png\chessMask.png">
       <Filter>Resource Files\PNG</Filter>
     </Image>
@@ -56,6 +53,9 @@
       <Filter>Resource Files\PNG</Filter>
     </Image>
     <Image Include="png\chessYellow.png">
+      <Filter>Resource Files\PNG</Filter>
+    </Image>
+    <Image Include="png\chessGreen.png">
       <Filter>Resource Files\PNG</Filter>
     </Image>
   </ItemGroup>
