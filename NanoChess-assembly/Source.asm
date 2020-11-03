@@ -20,6 +20,8 @@ include	 imm32.inc
 includelib  imm32.lib
 include	 msimg32.inc
 includelib  msimg32.lib
+include masm32.inc
+includelib  masm32.lib
 
 .const
 Column equ 9
@@ -126,9 +128,9 @@ possibleColor BYTE 1,2,3,4,5,6
 ; 获取first到second闭区间内的伪随机整数，以eax返回
 GetRandomInt PROC uses ecx edx first:DWORD, second:DWORD
 	invoke GetTickCount ; 取得随机数种子，也可用别的方法代替
-	mov ecx, 23         ; X = ecx = 23
+	mov ecx, 22639      ; X = ecx = 22639
 	mul ecx             ; eax = eax * X
-	add eax, 7          ; eax = eax + Y （Y = 7）
+	add eax, 38711      ; eax = eax + Y （Y = 38711）
 	mov ecx, second     ; ecx = 上限
 	sub ecx, first      ; ecx = 上限 - 下限
 	inc ecx             ; Z = ecx + 1 （得到了范围）
@@ -141,6 +143,8 @@ GetRandomInt ENDP
 
 InitializeBoard PROC uses eax ecx edx
 	; 随机初始化整个棋盘，要求不能有三连元素
+	invoke GetTickCount
+	invoke nseed, eax
 	mov eax, 0
 	.WHILE eax < 153
 		; 数组里index = 0 2 4 6 8是第一行棋子 10 12 14 16是第二行棋子（数组一行9个）
@@ -396,7 +400,10 @@ InitializeBoard PROC uses eax ecx edx
 		mov edx, eax						; 用edx存一下当前编号
 		mov ecx, 0
 		.WHILE ecx == 0						; 循环直到找到一种可用颜色为止
-			invoke GetRandomInt, 0, 5		; 获取一个0-5之间的随机数，存在eax(al)中
+			;invoke GetRandomInt, 0, 5		; 获取一个0-5之间的随机数，存在eax(al)中
+			push edx
+			invoke nrandom, 6
+			pop edx
 			add eax, OFFSET possibleColor
 			mov ecx, 0
 			mov cl, byte ptr [eax]
