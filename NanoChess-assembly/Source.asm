@@ -20,8 +20,8 @@ include	 user32.inc
 includelib  user32.lib
 include	 kernel32.inc
 includelib  kernel32.lib
-include	 imm32.inc
-includelib  imm32.lib
+include	 winmm.inc
+includelib  winmm.lib
 include	 msimg32.inc
 includelib  msimg32.lib
 include masm32.inc
@@ -62,13 +62,14 @@ TIMER_GAMETIMER_ELAPSE equ 10	; 默认计时器刷新间隔的毫秒数
 ;==================== DATA =======================
 .data
 
-memnum100 DWORD 100
+memnum128 DWORD 128
 memnum2 DWORD 2
 mouseX WORD 0
 mouseY WORD 0
 
-GAMESTATUS BYTE 1      ; 0Ϊ��ʼ����, 1Ϊ��Ϸ����
-CLICK_ENABLE BYTE 1	   ; �Ƿ���ܵ���¼�
+UI_STAGE BYTE 1		   ; 游戏界面场景（0为初始菜单，1为游戏场景）
+GAME_STATUS BYTE 0	   ; 游戏状态 (0为普通状态, 1为交换缩小，2为交换放大，3为消去（包含炸弹特效），4为重新生成填充)
+CLICK_ENABLE BYTE 1	   ; 能否点击
 
 ; 棋格结构体
 CELL STRUCT
@@ -79,9 +80,9 @@ CELL STRUCT
 CELL ENDS
 
 ; 棋盘
-chessboard CELL 153 dup(<1,0,0,100>)
+chessboard CELL 153 dup(<1,0,0,128>)
 
-; ѡ�е�����
+; 点击选择
 selectedChessOne DWORD -1
 selectedChessTwo DWORD -1
 
@@ -783,9 +784,7 @@ WinMain PROC
 	; 播放音乐
 	invoke mciSendString, ADDR playSongCommand, NULL, 0, NULL;
 
-	
 
-	; ��õ�ǰ������
 	; 获得当前程序句柄
 	INVOKE GetModuleHandle, NULL
 	mov hInstance, eax
@@ -866,24 +865,133 @@ TimerUpdate PROC,
 ;----------------
 	local	@i:DWORD
 	local	@j:DWORD
-	local	@cell:CELL
-	local	@chessAddress:DWORD
-	mov @chessAddress, OFFSET chessboard
-	mov eax, @chessAddress
-	mov eax, [eax]
-	mov @cell, eax
+	local	@cell1:CELL
+	local	@cell2:CELL
+	local	@chessAddress1:DWORD
+	local	@chessAddress2:DWORD
 
-	.IF @cell.m_scale == 0
-		mov eax, 100
-		mov @cell.m_scale, al
-	.ELSE
-		;sub @cell.m_scale, 10
-		mov al, @cell.m_scale
-		div memnum2
-		mov @cell.m_scale, al
+	.IF UI_STAGE == 0
+		; 游戏初始菜单
+
+	.ELSEIF UI_STAGE == 1
+		; 游戏场景
+		.IF GAME_STATUS == 1
+			mov eax, selectedChessOne
+			mov ebx, TYPE CELL
+			mul ebx
+			add eax, OFFSET chessboard
+			mov @chessAddress1, eax
+			mov eax, [eax]
+			mov @cell1, eax
+
+			mov eax, selectedChessTwo
+			mov ebx, TYPE CELL
+			mul ebx
+			add eax, OFFSET chessboard
+			mov @chessAddress2, eax
+			mov eax, [eax]
+			mov @cell2, eax
+
+			.IF @cell1.m_scale == 1
+				mov al, @cell1.m_color
+				mov ah, @cell2.m_color
+				mov @cell1.m_color, ah
+				mov @cell2.m_color, al
+				mov ebx, @chessAddress1
+				mov eax, @cell1
+				mov [ebx], eax
+				mov ebx, @chessAddress2
+				mov eax, @cell2
+				mov [ebx], eax
+				
+				mov GAME_STATUS, 2
+			.ELSE
+				movzx eax, @cell1.m_scale
+				mov edx, 0
+				div memnum2
+				mov @cell1.m_scale, al
+				movzx eax, @cell2.m_scale
+				mov edx, 0
+				div memnum2
+				mov @cell2.m_scale, al
+				mov ebx, @chessAddress1
+				mov eax, @cell1
+				mov [ebx], eax
+				mov ebx, @chessAddress2
+				mov eax, @cell2
+				mov [ebx], eax
+			.ENDIF
+		.ELSEIF GAME_STATUS == 2
+			mov eax, selectedChessOne
+			mov ebx, TYPE CELL
+			mul ebx
+			add eax, OFFSET chessboard
+			mov @chessAddress1, eax
+			mov eax, [eax]
+			mov @cell1, eax
+
+			mov eax, selectedChessTwo
+			mov ebx, TYPE CELL
+			mul ebx
+			add eax, OFFSET chessboard
+			mov @chessAddress2, eax
+			mov eax, [eax]
+			mov @cell2, eax
+
+			.IF @cell1.m_scale == 0
+				mov @cell1.m_scale, 1
+				mov @cell2.m_scale, 1
+				mov ebx, @chessAddress1
+				mov eax, @cell1
+				mov [ebx], eax
+				mov ebx, @chessAddress2
+				mov eax, @cell2
+				mov [ebx], eax
+				
+				mov GAME_STATUS, 2
+			.ELSEIF @cell1.m_scale != 128
+				movzx eax, @cell1.m_scale
+				mul memnum2
+				mov @cell1.m_scale, al
+				movzx eax, @cell2.m_scale
+				mul memnum2
+				mov @cell2.m_scale, al
+				mov ebx, @chessAddress1
+				mov eax, @cell1
+				mov [ebx], eax
+				mov ebx, @chessAddress2
+				mov eax, @cell2
+				mov [ebx], eax
+			.ELSE
+				mov selectedChessOne, -1
+				mov GAME_STATUS, 0
+				mov CLICK_ENABLE, 1
+			.ENDIF
+
+		.ELSEIF GAME_STATUS == 3
+
+		.ELSEIF GAME_STATUS == 4
+
+		.ENDIF
+
 	.ENDIF
-	mov eax, @cell
-	mov chessboard, eax
+
+	;mov @chessAddress, OFFSET chessboard
+	;mov eax, @chessAddress
+	;mov eax, [eax]
+	;mov @cell, eax
+;
+	;.IF @cell.m_scale == 0
+		;mov eax, 100
+		;mov @cell.m_scale, al
+	;.ELSE
+		;;sub @cell.m_scale, 10
+		;mov al, @cell.m_scale
+		;div memnum2
+		;mov @cell.m_scale, al
+	;.ENDIF
+	;mov eax, @cell
+	;mov chessboard, eax
 
 	INVOKE InvalidateRect, hWnd, NULL, FALSE
 	ret
@@ -908,7 +1016,7 @@ WinProc PROC uses ebx edi esi,
 		INVOKE InitLoadProc, hWnd, wParam, lParam
 
 	.ELSEIF eax == WM_LBUTTONDOWN
-		; �����������¼�
+		; 点击可用
 		.IF CLICK_ENABLE == 1
 			INVOKE LButtonDownProc, hWnd, wParam, lParam
 		.ENDIF
@@ -932,7 +1040,7 @@ WinProc ENDP
 ;-----------------------------------------------------
 LButtonDownProc PROC,
 	hWnd:DWORD, wParam:DWORD, lParam:DWORD
-; ����������¼�
+; 鼠标左键点击
 ;-----------------------------------------------------
 	local	@mouseX:WORD
 	local	@mouseY:WORD
@@ -941,9 +1049,9 @@ LButtonDownProc PROC,
 	mov @mouseX, ax
 	sar eax, 16
 	mov @mouseY, ax
-	.IF GAMESTATUS == 0
+	.IF UI_STAGE == 0
 
-	.ELSEIF GAMESTATUS == 1
+	.ELSEIF UI_STAGE == 1
 		movzx eax, @mouseX
 		sub eax, CLICK_BOARD_X
 		mov edx, 0
@@ -955,7 +1063,7 @@ LButtonDownProc PROC,
 			.IF eax == 1
 				movzx eax, @mouseY
 				sub eax, BOARD_Y
-				sub eax, @selected
+				sub eax, COLUMN_CELL_SPACE
 				mov edx, 0
 				mov ebx, CLICK_CELL_HEIGHT
 				div ebx
@@ -985,13 +1093,21 @@ LButtonDownProc PROC,
 			mov @selected, -1
 		.ENDIF
 
-		.IF @selected == -1 or selectedChessOne == -1
+		.IF @selected == -1 || selectedChessOne == -1
 			mov eax, @selected
 			mov selectedChessOne, eax
 		.ELSE
 			mov eax, @selected
-			mov selectedChessTwo, eax
-			mov CLICK_ENABLE, 0
+			sub eax, selectedChessOne
+			.IF eax == -18 || eax == -10 || eax == -8 || eax == 8 || eax == 10 || eax == 18
+				mov eax, @selected
+				mov selectedChessTwo, eax
+				mov GAME_STATUS, 1
+				mov CLICK_ENABLE, 0
+			.ELSE
+				mov eax, @selected
+				mov selectedChessOne, eax
+			.ENDIF
 		.ENDIF
 	.ENDIF
 
@@ -1045,199 +1161,207 @@ PaintProc PROC,
 	;INVOKE GdipDrawImageI, graphics, hChessBg, 0, 0
 	;INVOKE GdipDrawImageI, graphics, hChessBg, 200, 200
 
-	mov @i, 0
-	mov @y, BOARD_Y
-	.REPEAT
-		mov @j, 0
-		mov @x, BOARD_X
-		mov eax, @i
-		AND eax, 1b
-		.IF eax == 1
-			add @x, EVEN_CELL_START
-			.REPEAT
-				INVOKE GdipDrawImageRectI, graphics, hChessBg,
-					@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
-					@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
-					CELL_WIDTH, CELL_HEIGHT
-				add @x, ROW_CELL_SPACE
-				inc @j
+	.IF UI_STAGE == 0
 
-			.UNTIL @j == 4
-		.ELSE
-			.REPEAT
-				INVOKE GdipDrawImageRectI, graphics, hChessBg,
-					@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
-					@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
-					CELL_WIDTH, CELL_HEIGHT
-				add @x, ROW_CELL_SPACE
-				inc @j
-			.UNTIL @j == 5
+	.ELSEIF UI_STAGE == 1
+
+		mov @i, 0
+		mov @y, BOARD_Y
+		.REPEAT
+			mov @j, 0
+			mov @x, BOARD_X
+			mov eax, @i
+			AND eax, 1b
+			.IF eax == 1
+				add @x, EVEN_CELL_START
+				.REPEAT
+					INVOKE GdipDrawImageRectI, graphics, hChessBg,
+						@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+						@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+						CELL_WIDTH, CELL_HEIGHT
+					add @x, ROW_CELL_SPACE
+					inc @j
+
+				.UNTIL @j == 4
+			.ELSE
+				.REPEAT
+					INVOKE GdipDrawImageRectI, graphics, hChessBg,
+						@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+						@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+						CELL_WIDTH, CELL_HEIGHT
+					add @x, ROW_CELL_SPACE
+					inc @j
+				.UNTIL @j == 5
+			.ENDIF
+			add @y, COLUMN_CELL_SPACE	; 行y值
+			inc @i
+		.UNTIL @i == 17
+
+
+		mov @i, 0
+		mov @y, BOARD_Y
+		mov @chessAddress, OFFSET chessboard
+		.REPEAT
+			mov @j, 0
+			mov @x, BOARD_X
+			mov eax, @i
+			AND eax, 1b
+			.IF eax == 1
+				add @x, EVEN_CELL_START
+				.REPEAT
+					mov eax, @chessAddress
+					mov eax, [eax]
+					mov @cell, eax
+					.IF @cell.m_color == 1
+						mov eax, hChessType1
+					.ELSEIF @cell.m_color == 2
+						mov eax, hChessType2
+					.ELSEIF @cell.m_color == 3
+						mov eax, hChessType3
+					.ELSEIF @cell.m_color == 4
+						mov eax, hChessType4
+					.ELSEIF @cell.m_color == 5
+						mov eax, hChessType5
+					.ELSEIF @cell.m_color == 6
+						mov eax, hChessType6
+					.ENDIF
+					mov @chessColor, eax
+
+
+					.IF @cell.m_scale != 128
+						mov eax, CHESS_WIDTH
+						mul @cell.m_scale
+						mov edx, 0
+						div memnum128
+						mov @chessw, eax
+						mov eax, CHESS_HEIGHT
+						mul @cell.m_scale
+						mov edx, 0
+						div memnum128
+						mov @chessh, eax
+					.ELSEIF
+						mov eax, CHESS_WIDTH
+						mov @chessw, eax
+						mov eax, CHESS_HEIGHT
+						mov @chessh, eax
+					.ENDIF
+					mov eax, CELL_WIDTH
+					sub eax, @chessw
+					mov edx, 0
+					div memnum2
+					add eax, @x
+					mov @chessx, eax
+					mov eax, CELL_HEIGHT
+					sub eax, @chessh
+					mov edx, 0
+					div memnum2
+					add eax, @y
+					mov @chessy, eax
+
+
+
+
+					INVOKE GdipDrawImageRectI, graphics, @chessColor,
+						@chessx,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+						@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+						@chessw, @chessh
+					
+					add @x, ROW_CELL_SPACE
+					inc @j
+					add @chessAddress, 2 * TYPE CELL
+
+				.UNTIL @j == 4
+			.ELSE
+
+				.REPEAT
+					mov eax, @chessAddress
+					mov eax, [eax]
+					mov @cell, eax
+					.IF @cell.m_color == 1
+						mov eax, hChessType1
+					.ELSEIF @cell.m_color == 2
+						mov eax, hChessType2
+					.ELSEIF @cell.m_color == 3
+						mov eax, hChessType3
+					.ELSEIF @cell.m_color == 4
+						mov eax, hChessType4
+					.ELSEIF @cell.m_color == 5
+						mov eax, hChessType5
+					.ELSEIF @cell.m_color == 6
+						mov eax, hChessType6
+					.ENDIF
+					mov @chessColor, eax
+
+					.IF @cell.m_scale != 128
+						mov eax, CHESS_WIDTH
+						mul @cell.m_scale
+						mov edx, 0
+						div memnum128
+						mov @chessw, eax
+						mov eax, CHESS_HEIGHT
+						mul @cell.m_scale
+						mov edx, 0
+						div memnum128
+						mov @chessh, eax
+					.ELSEIF
+						mov eax, CHESS_WIDTH
+						mov @chessw, eax
+						mov eax, CHESS_HEIGHT
+						mov @chessh, eax
+					.ENDIF
+					mov eax, CELL_WIDTH
+					sub eax, @chessw
+					mov edx, 0
+					div memnum2
+					add eax, @x
+					mov @chessx, eax
+					mov eax, CELL_HEIGHT
+					sub eax, @chessh
+					mov edx, 0
+					div memnum2
+					add eax, @y
+					mov @chessy, eax
+
+					INVOKE GdipDrawImageRectI, graphics, @chessColor,
+						@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
+						@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+						@chessw, @chessh
+					
+					add @x, ROW_CELL_SPACE
+					inc @j
+					add @chessAddress, 2 * TYPE CELL
+
+				.UNTIL @j == 5
+			.ENDIF
+			add @y, COLUMN_CELL_SPACE	; 行y值
+			inc @i
+		.UNTIL @i == 17
+
+		.IF GAME_STATUS == 0
+		mov eax, selectedChessOne
+			.IF eax != -1
+				mov edx, 0
+				mov ebx, 9
+				div ebx
+				mov @j, eax
+				mov @i, edx
+				mov eax, @i
+				mov ebx, ROW_CELL_SPACE_HALF
+				mul ebx
+				add eax, BOARD_X
+				mov @x, eax
+				mov eax, @j
+				mov ebx, COLUMN_CELL_SPACE
+				mul ebx
+				add eax, BOARD_Y
+				mov @y, eax
+				INVOKE GdipDrawImageRectI, graphics, hChessSelected,
+							@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+							@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+							CELL_WIDTH, CELL_HEIGHT
+
+			.ENDIF
 		.ENDIF
-		add @y, COLUMN_CELL_SPACE	; 行y值
-		inc @i
-	.UNTIL @i == 17
-
-
-	mov @i, 0
-	mov @y, BOARD_Y
-	mov @chessAddress, OFFSET chessboard
-	.REPEAT
-		mov @j, 0
-		mov @x, BOARD_X
-		mov eax, @i
-		AND eax, 1b
-		.IF eax == 1
-			add @x, EVEN_CELL_START
-			.REPEAT
-				mov eax, @chessAddress
-				mov eax, [eax]
-				mov @cell, eax
-				.IF @cell.m_color == 1
-					mov eax, hChessType1
-				.ELSEIF @cell.m_color == 2
-					mov eax, hChessType2
-				.ELSEIF @cell.m_color == 3
-					mov eax, hChessType3
-				.ELSEIF @cell.m_color == 4
-					mov eax, hChessType4
-				.ELSEIF @cell.m_color == 5
-					mov eax, hChessType5
-				.ELSEIF @cell.m_color == 6
-					mov eax, hChessType6
-				.ENDIF
-				mov @chessColor, eax
-
-
-				.IF @cell.m_scale != 100
-					mov eax, CHESS_WIDTH
-					mul @cell.m_scale
-					mov edx, 0
-					div memnum100
-					mov @chessw, eax
-					mov eax, CHESS_HEIGHT
-					mul @cell.m_scale
-					mov edx, 0
-					div memnum100
-					mov @chessh, eax
-				.ELSEIF
-					mov eax, CHESS_WIDTH
-					mov @chessw, eax
-					mov eax, CHESS_HEIGHT
-					mov @chessh, eax
-				.ENDIF
-				mov eax, CELL_WIDTH
-				sub eax, @chessw
-				mov edx, 0
-				div memnum2
-				add eax, @x
-				mov @chessx, eax
-				mov eax, CELL_HEIGHT
-				sub eax, @chessh
-				mov edx, 0
-				div memnum2
-				add eax, @y
-				mov @chessy, eax
-
-
-
-
-				INVOKE GdipDrawImageRectI, graphics, @chessColor,
-					@chessx,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
-					@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
-					@chessw, @chessh
-				
-				add @x, ROW_CELL_SPACE
-				inc @j
-				add @chessAddress, 2 * TYPE CELL
-
-			.UNTIL @j == 4
-		.ELSE
-
-			.REPEAT
-				mov eax, @chessAddress
-				mov eax, [eax]
-				mov @cell, eax
-				.IF @cell.m_color == 1
-					mov eax, hChessType1
-				.ELSEIF @cell.m_color == 2
-					mov eax, hChessType2
-				.ELSEIF @cell.m_color == 3
-					mov eax, hChessType3
-				.ELSEIF @cell.m_color == 4
-					mov eax, hChessType4
-				.ELSEIF @cell.m_color == 5
-					mov eax, hChessType5
-				.ELSEIF @cell.m_color == 6
-					mov eax, hChessType6
-				.ENDIF
-				mov @chessColor, eax
-
-				.IF @cell.m_scale != 100
-					mov eax, CHESS_WIDTH
-					mul @cell.m_scale
-					mov edx, 0
-					div memnum100
-					mov @chessw, eax
-					mov eax, CHESS_HEIGHT
-					mul @cell.m_scale
-					mov edx, 0
-					div memnum100
-					mov @chessh, eax
-				.ELSEIF
-					mov eax, CHESS_WIDTH
-					mov @chessw, eax
-					mov eax, CHESS_HEIGHT
-					mov @chessh, eax
-				.ENDIF
-				mov eax, CELL_WIDTH
-				sub eax, @chessw
-				mov edx, 0
-				div memnum2
-				add eax, @x
-				mov @chessx, eax
-				mov eax, CELL_HEIGHT
-				sub eax, @chessh
-				mov edx, 0
-				div memnum2
-				add eax, @y
-				mov @chessy, eax
-
-				INVOKE GdipDrawImageRectI, graphics, @chessColor,
-					@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
-					@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
-					@chessw, @chessh
-				
-				add @x, ROW_CELL_SPACE
-				inc @j
-				add @chessAddress, 2 * TYPE CELL
-
-			.UNTIL @j == 5
-		.ENDIF
-		add @y, COLUMN_CELL_SPACE	; 行y值
-		inc @i
-	.UNTIL @i == 17
-
-	mov eax, selectedChess
-	.IF eax != -1
-		mov edx, 0
-		mov ebx, 9
-		div ebx
-		mov @j, eax
-		mov @i, edx
-		mov eax, @i
-		mov ebx, ROW_CELL_SPACE_HALF
-		mul ebx
-		add eax, BOARD_X
-		mov @x, eax
-		mov eax, @j
-		mov ebx, COLUMN_CELL_SPACE
-		mul ebx
-		add eax, BOARD_Y
-		mov @y, eax
-		INVOKE GdipDrawImageRectI, graphics, hChessSelected,
-					@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
-					@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
-					CELL_WIDTH, CELL_HEIGHT
 
 	.ENDIF
 
