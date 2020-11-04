@@ -10,6 +10,8 @@ option casemap:none
 ; Last update: 9/24/01
 
 include	 windows.inc
+include	 opengl32.inc
+includelib  opengl32.lib
 include	 gdi32.inc
 includelib  gdi32.lib
 include	 gdiplus.inc
@@ -33,8 +35,6 @@ WINDOW_WIDTH equ 600
 WINDOW_HEIGHT equ 900
 WINDOW_TITLEBARHEIGHT equ 32
 
-BOARD_X equ 6
-BOARD_Y equ 110
 
 CELL_WIDTH equ 84
 CELL_HEIGHT equ 76
@@ -44,8 +44,16 @@ CHESS_WIDTH equ 66
 CHESS_HEIGHT equ 60
 
 ; HALF_CELL_WIDTH equ
+ROW_CELL_SPACE_HALF equ 63
 EVEN_CELL_START equ 63
 ;chessBg equ BMP_CHESSBG
+
+BOARD_X equ 6
+BOARD_Y equ 110
+CLICK_BOARD_X equ BOARD_X + CELL_WIDTH / 8
+CLICK_BOARD_Y equ BOARD_Y
+CLICK_CELL_WIDTH equ CELL_WIDTH / 4 * 3
+CLICK_CELL_HEIGHT equ CELL_HEIGHT
 
 
 TIMER_GAMETIMER equ 1			; 游戏的默认计时器ID
@@ -56,6 +64,11 @@ TIMER_GAMETIMER_ELAPSE equ 10	; 默认计时器刷新间隔的毫秒数
 
 memnum100 DWORD 100
 memnum2 DWORD 2
+mouseX WORD 0
+mouseY WORD 0
+
+GAMESTATUS BYTE 1      ; 0为初始界面, 1为游戏界面
+CLICK_ENABLE BYTE 1	   ; 是否接受点击事件
 
 ; 棋格结构体
 CELL STRUCT
@@ -67,6 +80,10 @@ CELL ENDS
 
 ; 棋盘
 chessboard CELL 153 dup(<1,0,0,100>)
+
+; 选中的棋子
+selectedChessOne DWORD -1
+selectedChessTwo DWORD -1
 
 
 ; win32相关
@@ -107,6 +124,7 @@ $$Unicode chessGreen, png\chessGreen.png		; type3
 $$Unicode chessOrange, png\chessOrange.png		; type4
 $$Unicode chessYellow, png\chessYellow.png		; type5
 $$Unicode chessBlue, png\chessBlue.png			; type6
+$$Unicode chessSelected, png\chessSelected.png			; 选中边框
 
 
 ; gdip加载图片资源指针
@@ -117,11 +135,13 @@ hChessType3  DWORD 0
 hChessType4  DWORD 0
 hChessType5  DWORD 0
 hChessType6  DWORD 0
+hChessSelected	DWORD 0
 
 ; proc声明
 InitLoadProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 PaintProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 InitializeBoard PROTO STDCALL
+LButtonDownProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 StartupInput		GdiplusStartupInput <1, NULL, FALSE, 0>
 
 ; 记录有哪些可用颜色，不可用的标为0
@@ -430,6 +450,8 @@ WinMain PROC
 ; windows窗口程序入口函数
 ;--------------
 
+	
+
 	; 获得当前程序句柄
 	INVOKE GetModuleHandle, NULL
 	mov hInstance, eax
@@ -521,7 +543,10 @@ TimerUpdate PROC,
 		mov eax, 100
 		mov @cell.m_scale, al
 	.ELSE
-		sub @cell.m_scale, 10
+		;sub @cell.m_scale, 10
+		mov al, @cell.m_scale
+		div memnum2
+		mov @cell.m_scale, al
 	.ENDIF
 	mov eax, @cell
 	mov chessboard, eax
@@ -548,6 +573,12 @@ WinProc PROC uses ebx edi esi,
 	.ELSEIF eax == WM_CREATE
 		INVOKE InitLoadProc, hWnd, wParam, lParam
 
+	.ELSEIF eax == WM_LBUTTONDOWN
+		; 鼠标左键按下事件
+		.IF CLICK_ENABLE == 1
+			INVOKE LButtonDownProc, hWnd, wParam, lParam
+		.ENDIF
+
 	.ELSEIF eax == WM_TIMER
 		INVOKE TimerUpdate, hWnd
 
@@ -563,6 +594,75 @@ WinProc PROC uses ebx edi esi,
 WinProcExit:
 	ret
 WinProc ENDP
+
+;-----------------------------------------------------
+LButtonDownProc PROC,
+	hWnd:DWORD, wParam:DWORD, lParam:DWORD
+; 鼠标左键点击事件
+;-----------------------------------------------------
+	local	@mouseX:WORD
+	local	@mouseY:WORD
+	local	@selected:DWORD
+	mov eax, lParam
+	mov @mouseX, ax
+	sar eax, 16
+	mov @mouseY, ax
+	.IF GAMESTATUS == 0
+
+	.ELSEIF GAMESTATUS == 1
+		movzx eax, @mouseX
+		sub eax, CLICK_BOARD_X
+		mov edx, 0
+		mov ebx, CLICK_CELL_WIDTH
+		div ebx
+		.IF eax < 9
+			mov @selected, eax
+			and eax, 1b
+			.IF eax == 1
+				movzx eax, @mouseY
+				sub eax, BOARD_Y
+				sub eax, @selected
+				mov edx, 0
+				mov ebx, CLICK_CELL_HEIGHT
+				div ebx
+				.IF eax < 8
+					mov ebx ,18
+					mul ebx
+					add eax, 9
+					add @selected, eax
+				.ELSE
+					mov @selected, -1
+				.ENDIF
+			.ELSEIF eax == 0
+				movzx eax, @mouseY
+				sub eax, BOARD_Y
+				mov edx, 0
+				mov ebx, CLICK_CELL_HEIGHT
+				div ebx
+				.IF eax < 9
+					mov ebx ,18
+					mul ebx
+					add @selected, eax
+				.ELSE
+					mov @selected, -1
+				.ENDIF
+			.ENDIF
+		.ELSE
+			mov @selected, -1
+		.ENDIF
+
+		.IF @selected == -1 or selectedChessOne == -1
+			mov eax, @selected
+			mov selectedChessOne, eax
+		.ELSE
+			mov eax, @selected
+			mov selectedChessTwo, eax
+			mov CLICK_ENABLE, 0
+		.ENDIF
+	.ENDIF
+
+	ret
+LButtonDownProc ENDP
 
 ;-----------------------------------------------------
 PaintProc PROC,
@@ -783,6 +883,30 @@ PaintProc PROC,
 		inc @i
 	.UNTIL @i == 17
 
+	mov eax, selectedChess
+	.IF eax != -1
+		mov edx, 0
+		mov ebx, 9
+		div ebx
+		mov @j, eax
+		mov @i, edx
+		mov eax, @i
+		mov ebx, ROW_CELL_SPACE_HALF
+		mul ebx
+		add eax, BOARD_X
+		mov @x, eax
+		mov eax, @j
+		mov ebx, COLUMN_CELL_SPACE
+		mul ebx
+		add eax, BOARD_Y
+		mov @y, eax
+		INVOKE GdipDrawImageRectI, graphics, hChessSelected,
+					@x,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+					@y,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+					CELL_WIDTH, CELL_HEIGHT
+
+	.ENDIF
+
 	INVOKE BitBlt, hDC ,0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, @hdcMemBuffer, 0, 0, SRCCOPY
 	;invoke DeleteObject,@hFont
 	invoke DeleteDC, @hdcMemBuffer
@@ -805,6 +929,7 @@ InitLoadProc PROC,
 	INVOKE GdipLoadImageFromFile, OFFSET chessOrange, ADDR hChessType4
 	INVOKE GdipLoadImageFromFile, OFFSET chessYellow, ADDR hChessType5
 	INVOKE GdipLoadImageFromFile, OFFSET chessBlue, ADDR hChessType6
+	INVOKE GdipLoadImageFromFile, OFFSET chessSelected, ADDR hChessSelected
 	ret
 InitLoadProc ENDP
 
