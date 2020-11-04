@@ -48,8 +48,8 @@ EVEN_CELL_START equ 63
 ;chessBg equ BMP_CHESSBG
 
 
-TIMER_GAMETIMER equ 1			; ÓÎÏ·µÄÄ¬ÈÏ¼ÆÊ±Æ÷ID
-TIMER_GAMETIMER_ELAPSE equ 10	; Ä¬ÈÏ¼ÆÊ±Æ÷Ë¢ĞÂ¼ä¸ôµÄºÁÃëÊı
+TIMER_GAMETIMER equ 1			; æ¸¸æˆçš„é»˜è®¤è®¡æ—¶å™¨ID
+TIMER_GAMETIMER_ELAPSE equ 10	; é»˜è®¤è®¡æ—¶å™¨åˆ·æ–°é—´éš”çš„æ¯«ç§’æ•°
 
 ;==================== DATA =======================
 .data
@@ -57,25 +57,33 @@ TIMER_GAMETIMER_ELAPSE equ 10	; Ä¬ÈÏ¼ÆÊ±Æ÷Ë¢ĞÂ¼ä¸ôµÄºÁÃëÊı
 memnum100 DWORD 100
 memnum2 DWORD 2
 
-; Æå¸ñ½á¹¹Ìå
+; æ£‹æ ¼ç»“æ„ä½“
 CELL STRUCT
-    m_color    BYTE    ?    ;ÑÕÉ«
-    m_type     BYTE    0    ;µÀ¾ßÀàĞÍ(0ÎªÆÕÍ¨¸ñ£¬1ÎªÕ¨µ¯)
-    m_frame    BYTE    0    ;Ö¡¶¯»­
-	m_scale    BYTE    0    ;Õ¼Î»£¬´Õ4×Ö½Ú
+    m_color    BYTE    ?    ;é¢œè‰²
+    m_type     BYTE    0    ;é“å…·ç±»å‹(0ä¸ºæ™®é€šæ ¼ï¼Œ1ä¸ºç‚¸å¼¹)
+    m_frame    BYTE    0    ;å¸§åŠ¨ç”»
+	m_scale    BYTE    0    ;å ä½ï¼Œå‡‘4å­—èŠ‚
 CELL ENDS
 
-; ÆåÅÌ
+; æ£‹ç›˜
 chessboard CELL 153 dup(<1,0,0,100>)
 
+; æ£‹ç›˜ä¿¡æ¯
+cell_size DWORD 4
+row_num DWORD 17
+col_num DWORD 9
+dir_num DWORD 6
 
-; win32Ïà¹Ø
+; æ’­æ”¾éŸ³ä¹å‘½ä»¤
+playSongCommand BYTE "play ./lemon.mp3", 0
+
+; win32ç›¸å…³
 hInstance DWORD ?
 hMainWnd  DWORD ?
 hDC       DWORD ?
 
 
-; ¶¨Òå´°¿Ú½á¹¹Ìå
+; å®šä¹‰çª—å£ç»“æ„ä½“
 MainWin WNDCLASSEX <NULL, NULL, WinProc,NULL,NULL,NULL,NULL,NULL, \
 	COLOR_WINDOW,NULL,szClassName, NULL>
 msg MSG <>
@@ -85,12 +93,12 @@ szWindowName  BYTE "NanoChess",0
 szClassName   BYTE "ASMWin",0
 
 
-; gdipÏà¹Ø
+; gdipç›¸å…³
 m_GdiplusToken	DWORD 0;
 graphics		DWORD 0;
 
 
-; ÎÄ¼şÃû´¦Àíºê
+; æ–‡ä»¶åå¤„ç†å®
 $$Unicode MACRO name, string
 	&name	LABEL BYTE
 	FORC	char, string
@@ -99,7 +107,7 @@ $$Unicode MACRO name, string
 		DB 0, 0
 ENDM
 
-; pngÍ¼Æ¬ÎÄ¼ş
+; pngå›¾ç‰‡æ–‡ä»¶
 $$Unicode chessBg, png\chessBg.png
 $$Unicode chessRed, png\chessRed.png			; type1
 $$Unicode chessPurple, png\chessPurple.png		; type2
@@ -109,7 +117,7 @@ $$Unicode chessYellow, png\chessYellow.png		; type5
 $$Unicode chessBlue, png\chessBlue.png			; type6
 
 
-; gdip¼ÓÔØÍ¼Æ¬×ÊÔ´Ö¸Õë
+; gdipåŠ è½½å›¾ç‰‡èµ„æºæŒ‡é’ˆ
 hChessBg  DWORD 0
 hChessType1  DWORD 0
 hChessType2  DWORD 0
@@ -118,49 +126,49 @@ hChessType4  DWORD 0
 hChessType5  DWORD 0
 hChessType6  DWORD 0
 
-; procÉùÃ÷
+; procå£°æ˜
 InitLoadProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 PaintProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 InitializeBoard PROTO STDCALL
 StartupInput		GdiplusStartupInput <1, NULL, FALSE, 0>
 
-; ¼ÇÂ¼ÓĞÄÄĞ©¿ÉÓÃÑÕÉ«£¬²»¿ÉÓÃµÄ±êÎª0
+; è®°å½•æœ‰å“ªäº›å¯ç”¨é¢œè‰²ï¼Œä¸å¯ç”¨çš„æ ‡ä¸º0
 possibleColor BYTE 1,2,3,4,5,6					
 
 ;------------------------
 .code
 
 
-; »ñÈ¡firstµ½second±ÕÇø¼äÄÚµÄÎ±Ëæ»úÕûÊı£¬ÒÔeax·µ»Ø
+; è·å–firståˆ°secondé—­åŒºé—´å†…çš„ä¼ªéšæœºæ•´æ•°ï¼Œä»¥eaxè¿”å›
 GetRandomInt PROC uses ecx edx first:DWORD, second:DWORD
-	invoke GetTickCount ; È¡µÃËæ»úÊıÖÖ×Ó£¬Ò²¿ÉÓÃ±ğµÄ·½·¨´úÌæ
+	invoke GetTickCount ; å–å¾—éšæœºæ•°ç§å­ï¼Œä¹Ÿå¯ç”¨åˆ«çš„æ–¹æ³•ä»£æ›¿
 	mov ecx, 22639      ; X = ecx = 22639
 	mul ecx             ; eax = eax * X
-	add eax, 38711      ; eax = eax + Y £¨Y = 38711£©
-	mov ecx, second     ; ecx = ÉÏÏŞ
-	sub ecx, first      ; ecx = ÉÏÏŞ - ÏÂÏŞ
-	inc ecx             ; Z = ecx + 1 £¨µÃµ½ÁË·¶Î§£©
+	add eax, 38711      ; eax = eax + Y ï¼ˆY = 38711ï¼‰
+	mov ecx, second     ; ecx = ä¸Šé™
+	sub ecx, first      ; ecx = ä¸Šé™ - ä¸‹é™
+	inc ecx             ; Z = ecx + 1 ï¼ˆå¾—åˆ°äº†èŒƒå›´ï¼‰
 	xor edx, edx        ; edx = 0
-	div ecx             ; eax = eax mod Z £¨ÓàÊıÔÚedxÀïÃæ£©
-	add edx, first      ; ĞŞÕı²úÉúµÄËæ»úÊıµÄ·¶Î§
+	div ecx             ; eax = eax mod Z ï¼ˆä½™æ•°åœ¨edxé‡Œé¢ï¼‰
+	add edx, first      ; ä¿®æ­£äº§ç”Ÿçš„éšæœºæ•°çš„èŒƒå›´
 	mov eax, edx        ; eax = Rand_Number
 	ret
 GetRandomInt ENDP
 
 InitializeBoard PROC uses eax ecx edx
-	; Ëæ»ú³õÊ¼»¯Õû¸öÆåÅÌ£¬ÒªÇó²»ÄÜÓĞÈıÁ¬ÔªËØ
+	; éšæœºåˆå§‹åŒ–æ•´ä¸ªæ£‹ç›˜ï¼Œè¦æ±‚ä¸èƒ½æœ‰ä¸‰è¿å…ƒç´ 
 	invoke GetTickCount
 	invoke nseed, eax
 	mov eax, 0
 	.WHILE eax < 153
-		; Êı×éÀïindex = 0 2 4 6 8ÊÇµÚÒ»ĞĞÆå×Ó 10 12 14 16ÊÇµÚ¶şĞĞÆå×Ó£¨Êı×éÒ»ĞĞ9¸ö£©
-		; ´Ó¶øÃ¿¸öÆå×ÓºÍÖÜÎ§6¸öÆå×ÓµÄindexµÄ²îÖµÎª-18 -10 -8 +8 +10 +18
-		; ¹æ¶¨ÑÕÉ«ÓĞ1,2,3,4,5,6ÁùÖÖ
-		; Èç¹ûÊÇÇ°Á½ĞĞ£¬²»ĞèÒª¼ì²â
-		; ±àºÅ36Ö®Ç°µÄ½Úµã£¨µÚ3/4ĞĞ£©²»ĞèÒªÏòÉÏ·½¼ì²â
-		; ´ËÍâ£¬Èç¹ûÊÇÇ°Á½ÁĞ£¨17ĞĞ9ÁĞ£©£¬Ö»ĞèÒªÏòÕıÉÏ·½ºÍÓÒÉÏ·½¼ì²â
-		; Èç¹ûÊÇµÚ7/8ÁĞ£¬ĞèÒªÏò×óÉÏºÍÕıÉÏ·½¼ì²â
-		; ÆäÓàÇé¿öĞèÒªÏò×óÉÏ¡¢ÕıÉÏ¡¢ÓÒÉÏÈı¸ö·½Ïò¼ì²â
+		; æ•°ç»„é‡Œindex = 0 2 4 6 8æ˜¯ç¬¬ä¸€è¡Œæ£‹å­ 10 12 14 16æ˜¯ç¬¬äºŒè¡Œæ£‹å­ï¼ˆæ•°ç»„ä¸€è¡Œ9ä¸ªï¼‰
+		; ä»è€Œæ¯ä¸ªæ£‹å­å’Œå‘¨å›´6ä¸ªæ£‹å­çš„indexçš„å·®å€¼ä¸º-18 -10 -8 +8 +10 +18
+		; è§„å®šé¢œè‰²æœ‰1,2,3,4,5,6å…­ç§
+		; å¦‚æœæ˜¯å‰ä¸¤è¡Œï¼Œä¸éœ€è¦æ£€æµ‹
+		; ç¼–å·36ä¹‹å‰çš„èŠ‚ç‚¹ï¼ˆç¬¬3/4è¡Œï¼‰ä¸éœ€è¦å‘ä¸Šæ–¹æ£€æµ‹
+		; æ­¤å¤–ï¼Œå¦‚æœæ˜¯å‰ä¸¤åˆ—ï¼ˆ17è¡Œ9åˆ—ï¼‰ï¼Œåªéœ€è¦å‘æ­£ä¸Šæ–¹å’Œå³ä¸Šæ–¹æ£€æµ‹
+		; å¦‚æœæ˜¯ç¬¬7/8åˆ—ï¼Œéœ€è¦å‘å·¦ä¸Šå’Œæ­£ä¸Šæ–¹æ£€æµ‹
+		; å…¶ä½™æƒ…å†µéœ€è¦å‘å·¦ä¸Šã€æ­£ä¸Šã€å³ä¸Šä¸‰ä¸ªæ–¹å‘æ£€æµ‹
 		mov [possibleColor], 1
 		mov [possibleColor + 1], 2
 		mov [possibleColor + 2], 3
@@ -171,7 +179,7 @@ InitializeBoard PROC uses eax ecx edx
 		push eax
 		mov edx, 0
 		mov ecx, 9
-		div ecx	; »ñÈ¡µ±Ç°ÊÇµÚ¼¸ÁĞ²¢´æÔÚedxÖĞ
+		div ecx	; è·å–å½“å‰æ˜¯ç¬¬å‡ åˆ—å¹¶å­˜åœ¨edxä¸­
 		pop eax
 		.IF eax >= 18
 			.IF edx == 0 || edx == 1
@@ -182,7 +190,7 @@ InitializeBoard PROC uses eax ecx edx
 				mul ecx
 				add eax, OFFSET chessboard
 				mov ecx, 0
-				mov cl, byte ptr [eax]							; ¼ì²âÓÒÉÏ·½µÚÒ»¸ö¸ñ×Ó
+				mov cl, byte ptr [eax]							; æ£€æµ‹å³ä¸Šæ–¹ç¬¬ä¸€ä¸ªæ ¼å­
 				pop edx
 				pop eax
 
@@ -194,19 +202,19 @@ InitializeBoard PROC uses eax ecx edx
 				mul ecx
 				pop ecx
 				add eax, OFFSET chessboard
-				mov ch, byte ptr [eax]							; ¼ì²âÓÒÉÏ·½µÚ¶ş¸ö¸ñ×Ó
+				mov ch, byte ptr [eax]							; æ£€æµ‹å³ä¸Šæ–¹ç¬¬äºŒä¸ªæ ¼å­
 				.IF cl == ch
-					; Èç¹ûÁ¬ĞøÁ½¸ö¸ñ×ÓÑÕÉ«ÏàÍ¬£¬½ûÖ¹Ñ¡ÔñÕâÖÖÑÕÉ«
+					; å¦‚æœè¿ç»­ä¸¤ä¸ªæ ¼å­é¢œè‰²ç›¸åŒï¼Œç¦æ­¢é€‰æ‹©è¿™ç§é¢œè‰²
 					mov ch, 0
 					add ecx, OFFSET possibleColor
 					dec ecx
 					mov eax, 0
-					mov [ecx], al							; ½«ÕâÖÖÑÕÉ«±êÎª0£¬¼´½ûÖ¹Ñ¡Ôñ
+					mov [ecx], al							; å°†è¿™ç§é¢œè‰²æ ‡ä¸º0ï¼Œå³ç¦æ­¢é€‰æ‹©
 				.ENDIF
 				pop edx
 				pop eax
 				
-				.IF eax >= 36								; 18,28Á½¸ö¸ñ×ÓÖ»ĞèÒªÏòÓÒÉÏ¼ì²â
+				.IF eax >= 36								; 18,28ä¸¤ä¸ªæ ¼å­åªéœ€è¦å‘å³ä¸Šæ£€æµ‹
 					push eax
 					push edx
 					sub eax, 18
@@ -214,7 +222,7 @@ InitializeBoard PROC uses eax ecx edx
 					mul ecx
 					add eax, OFFSET chessboard
 					mov ecx, 0
-					mov cl, byte ptr [eax]					; ¼ì²âÕıÉÏ·½µÚÒ»¸ö¸ñ×Ó
+					mov cl, byte ptr [eax]					; æ£€æµ‹æ­£ä¸Šæ–¹ç¬¬ä¸€ä¸ªæ ¼å­
 					pop edx
 					pop eax
 
@@ -226,14 +234,14 @@ InitializeBoard PROC uses eax ecx edx
 					mul ecx
 					pop ecx
 					add eax, OFFSET chessboard
-					mov ch, byte ptr [eax]					; ¼ì²âÕıÉÏ·½µÚ¶ş¸ö¸ñ×Ó
+					mov ch, byte ptr [eax]					; æ£€æµ‹æ­£ä¸Šæ–¹ç¬¬äºŒä¸ªæ ¼å­
 					.IF cl == ch
-						; Èç¹ûÁ¬ĞøÁ½¸ö¸ñ×ÓÑÕÉ«ÏàÍ¬£¬½ûÖ¹Ñ¡ÔñÕâÖÖÑÕÉ«
+						; å¦‚æœè¿ç»­ä¸¤ä¸ªæ ¼å­é¢œè‰²ç›¸åŒï¼Œç¦æ­¢é€‰æ‹©è¿™ç§é¢œè‰²
 						mov ch, 0
 						add ecx, OFFSET possibleColor
 						dec ecx
 						mov eax, 0
-						mov [ecx], al						; ½«ÕâÖÖÑÕÉ«±êÎª0£¬¼´½ûÖ¹Ñ¡Ôñ
+						mov [ecx], al						; å°†è¿™ç§é¢œè‰²æ ‡ä¸º0ï¼Œå³ç¦æ­¢é€‰æ‹©
 					.ENDIF
 					pop edx
 					pop eax
@@ -247,7 +255,7 @@ InitializeBoard PROC uses eax ecx edx
 				mul ecx
 				add eax, OFFSET chessboard
 				mov ecx, 0
-				mov cl, byte ptr [eax]						; ¼ì²â×óÉÏ·½µÚÒ»¸ö¸ñ×Ó
+				mov cl, byte ptr [eax]						; æ£€æµ‹å·¦ä¸Šæ–¹ç¬¬ä¸€ä¸ªæ ¼å­
 				pop edx
 				pop eax
 
@@ -259,19 +267,19 @@ InitializeBoard PROC uses eax ecx edx
 				mul ecx
 				pop ecx
 				add eax, OFFSET chessboard
-				mov ch, byte ptr [eax]							; ¼ì²â×óÉÏ·½µÚ¶ş¸ö¸ñ×Ó
+				mov ch, byte ptr [eax]							; æ£€æµ‹å·¦ä¸Šæ–¹ç¬¬äºŒä¸ªæ ¼å­
 				.IF cl == ch
-					; Èç¹ûÁ¬ĞøÁ½¸ö¸ñ×ÓÑÕÉ«ÏàÍ¬£¬½ûÖ¹Ñ¡ÔñÕâÖÖÑÕÉ«
+					; å¦‚æœè¿ç»­ä¸¤ä¸ªæ ¼å­é¢œè‰²ç›¸åŒï¼Œç¦æ­¢é€‰æ‹©è¿™ç§é¢œè‰²
 					mov ch, 0
 					add ecx, OFFSET possibleColor
 					dec ecx
 					mov eax, 0
-					mov [ecx], al							; ½«ÕâÖÖÑÕÉ«±êÎª0£¬¼´½ûÖ¹Ñ¡Ôñ
+					mov [ecx], al							; å°†è¿™ç§é¢œè‰²æ ‡ä¸º0ï¼Œå³ç¦æ­¢é€‰æ‹©
 				.ENDIF
 				pop edx
 				pop eax
 
-				.IF eax >= 36								; 26,34Á½¸ö¸ñ×ÓÖ»ĞèÒªÏò×óÉÏ¼ì²â
+				.IF eax >= 36								; 26,34ä¸¤ä¸ªæ ¼å­åªéœ€è¦å‘å·¦ä¸Šæ£€æµ‹
 					push eax
 					push edx
 					sub eax, 18
@@ -279,7 +287,7 @@ InitializeBoard PROC uses eax ecx edx
 					mul ecx
 					add eax, OFFSET chessboard
 					mov ecx, 0
-					mov cl, byte ptr [eax]							; ¼ì²âÕıÉÏ·½µÚÒ»¸ö¸ñ×Ó
+					mov cl, byte ptr [eax]							; æ£€æµ‹æ­£ä¸Šæ–¹ç¬¬ä¸€ä¸ªæ ¼å­
 					pop edx
 					pop eax
 
@@ -291,14 +299,14 @@ InitializeBoard PROC uses eax ecx edx
 					mul ecx
 					pop ecx
 					add eax, OFFSET chessboard
-					mov ch, byte ptr [eax]							; ¼ì²âÕıÉÏ·½µÚ¶ş¸ö¸ñ×Ó
+					mov ch, byte ptr [eax]							; æ£€æµ‹æ­£ä¸Šæ–¹ç¬¬äºŒä¸ªæ ¼å­
 					.IF cl == ch
-						; Èç¹ûÁ¬ĞøÁ½¸ö¸ñ×ÓÑÕÉ«ÏàÍ¬£¬½ûÖ¹Ñ¡ÔñÕâÖÖÑÕÉ«
+						; å¦‚æœè¿ç»­ä¸¤ä¸ªæ ¼å­é¢œè‰²ç›¸åŒï¼Œç¦æ­¢é€‰æ‹©è¿™ç§é¢œè‰²
 						mov ch, 0
 						add ecx, OFFSET possibleColor
 						dec ecx
 						mov eax, 0
-						mov [ecx], al							; ½«ÕâÖÖÑÕÉ«±êÎª0£¬¼´½ûÖ¹Ñ¡Ôñ
+						mov [ecx], al							; å°†è¿™ç§é¢œè‰²æ ‡ä¸º0ï¼Œå³ç¦æ­¢é€‰æ‹©
 					.ENDIF
 					pop edx
 					pop eax
@@ -312,7 +320,7 @@ InitializeBoard PROC uses eax ecx edx
 				mul ecx
 				add eax, OFFSET chessboard
 				mov ecx, 0
-				mov cl, byte ptr [eax]							; ¼ì²â×óÉÏ·½µÚÒ»¸ö¸ñ×Ó
+				mov cl, byte ptr [eax]							; æ£€æµ‹å·¦ä¸Šæ–¹ç¬¬ä¸€ä¸ªæ ¼å­
 				pop edx
 				pop eax
 
@@ -324,14 +332,14 @@ InitializeBoard PROC uses eax ecx edx
 				mul ecx
 				pop ecx
 				add eax, OFFSET chessboard
-				mov ch, byte ptr [eax]							; ¼ì²â×óÉÏ·½µÚ¶ş¸ö¸ñ×Ó
+				mov ch, byte ptr [eax]							; æ£€æµ‹å·¦ä¸Šæ–¹ç¬¬äºŒä¸ªæ ¼å­
 				.IF cl == ch
-					; Èç¹ûÁ¬ĞøÁ½¸ö¸ñ×ÓÑÕÉ«ÏàÍ¬£¬½ûÖ¹Ñ¡ÔñÕâÖÖÑÕÉ«
+					; å¦‚æœè¿ç»­ä¸¤ä¸ªæ ¼å­é¢œè‰²ç›¸åŒï¼Œç¦æ­¢é€‰æ‹©è¿™ç§é¢œè‰²
 					mov ch, 0
 					add ecx, OFFSET possibleColor
 					dec ecx
 					mov eax, 0
-					mov [ecx], al							; ½«ÕâÖÖÑÕÉ«±êÎª0£¬¼´½ûÖ¹Ñ¡Ôñ
+					mov [ecx], al							; å°†è¿™ç§é¢œè‰²æ ‡ä¸º0ï¼Œå³ç¦æ­¢é€‰æ‹©
 				.ENDIF
 				pop edx
 				pop eax
@@ -343,7 +351,7 @@ InitializeBoard PROC uses eax ecx edx
 				mul ecx
 				add eax, OFFSET chessboard
 				mov ecx, 0
-				mov cl, byte ptr [eax]							; ¼ì²âÓÒÉÏ·½µÚÒ»¸ö¸ñ×Ó
+				mov cl, byte ptr [eax]							; æ£€æµ‹å³ä¸Šæ–¹ç¬¬ä¸€ä¸ªæ ¼å­
 				pop edx
 				pop eax
 
@@ -355,19 +363,19 @@ InitializeBoard PROC uses eax ecx edx
 				mul ecx
 				pop ecx
 				add eax, OFFSET chessboard
-				mov ch, byte ptr [eax]							; ¼ì²âÓÒÉÏ·½µÚ¶ş¸ö¸ñ×Ó
+				mov ch, byte ptr [eax]							; æ£€æµ‹å³ä¸Šæ–¹ç¬¬äºŒä¸ªæ ¼å­
 				.IF cl == ch
-					; Èç¹ûÁ¬ĞøÁ½¸ö¸ñ×ÓÑÕÉ«ÏàÍ¬£¬½ûÖ¹Ñ¡ÔñÕâÖÖÑÕÉ«
+					; å¦‚æœè¿ç»­ä¸¤ä¸ªæ ¼å­é¢œè‰²ç›¸åŒï¼Œç¦æ­¢é€‰æ‹©è¿™ç§é¢œè‰²
 					mov ch, 0
 					add ecx, OFFSET possibleColor
 					dec ecx
 					mov eax, 0
-					mov [ecx], al							; ½«ÕâÖÖÑÕÉ«±êÎª0£¬¼´½ûÖ¹Ñ¡Ôñ
+					mov [ecx], al							; å°†è¿™ç§é¢œè‰²æ ‡ä¸º0ï¼Œå³ç¦æ­¢é€‰æ‹©
 				.ENDIF
 				pop edx
 				pop eax
 
-				.IF eax >= 36								; 26,34Á½¸ö¸ñ×ÓÖ»ĞèÒªÏò×óÉÏ¼ì²â
+				.IF eax >= 36								; 26,34ä¸¤ä¸ªæ ¼å­åªéœ€è¦å‘å·¦ä¸Šæ£€æµ‹
 					push eax
 					push edx
 					sub eax, 18
@@ -375,7 +383,7 @@ InitializeBoard PROC uses eax ecx edx
 					mul ecx
 					add eax, OFFSET chessboard
 					mov ecx, 0
-					mov cl, byte ptr [eax]							; ¼ì²âÕıÉÏ·½µÚÒ»¸ö¸ñ×Ó
+					mov cl, byte ptr [eax]							; æ£€æµ‹æ­£ä¸Šæ–¹ç¬¬ä¸€ä¸ªæ ¼å­
 					pop edx
 					pop eax
 
@@ -387,14 +395,14 @@ InitializeBoard PROC uses eax ecx edx
 					mul ecx
 					pop ecx
 					add eax, OFFSET chessboard
-					mov ch, byte ptr [eax]							; ¼ì²âÕıÉÏ·½µÚ¶ş¸ö¸ñ×Ó
+					mov ch, byte ptr [eax]							; æ£€æµ‹æ­£ä¸Šæ–¹ç¬¬äºŒä¸ªæ ¼å­
 					.IF cl == ch
-						; Èç¹ûÁ¬ĞøÁ½¸ö¸ñ×ÓÑÕÉ«ÏàÍ¬£¬½ûÖ¹Ñ¡ÔñÕâÖÖÑÕÉ«
+						; å¦‚æœè¿ç»­ä¸¤ä¸ªæ ¼å­é¢œè‰²ç›¸åŒï¼Œç¦æ­¢é€‰æ‹©è¿™ç§é¢œè‰²
 						mov ch, 0
 						add ecx, OFFSET possibleColor
 						dec ecx
 						mov eax, 0
-						mov [ecx], al							; ½«ÕâÖÖÑÕÉ«±êÎª0£¬¼´½ûÖ¹Ñ¡Ôñ
+						mov [ecx], al							; å°†è¿™ç§é¢œè‰²æ ‡ä¸º0ï¼Œå³ç¦æ­¢é€‰æ‹©
 					.ENDIF
 					pop edx
 					pop eax
@@ -403,10 +411,10 @@ InitializeBoard PROC uses eax ecx edx
 		.ENDIF
 
 		push eax
-		mov edx, eax						; ÓÃedx´æÒ»ÏÂµ±Ç°±àºÅ
+		mov edx, eax						; ç”¨edxå­˜ä¸€ä¸‹å½“å‰ç¼–å·
 		mov ecx, 0
-		.WHILE ecx == 0						; Ñ­»·Ö±µ½ÕÒµ½Ò»ÖÖ¿ÉÓÃÑÕÉ«ÎªÖ¹
-			;invoke GetRandomInt, 0, 5		; »ñÈ¡Ò»¸ö0-5Ö®¼äµÄËæ»úÊı£¬´æÔÚeax(al)ÖĞ
+		.WHILE ecx == 0						; å¾ªç¯ç›´åˆ°æ‰¾åˆ°ä¸€ç§å¯ç”¨é¢œè‰²ä¸ºæ­¢
+			;invoke GetRandomInt, 0, 5		; è·å–ä¸€ä¸ª0-5ä¹‹é—´çš„éšæœºæ•°ï¼Œå­˜åœ¨eax(al)ä¸­
 			push edx
 			invoke nrandom, 6
 			pop edx
@@ -418,19 +426,344 @@ InitializeBoard PROC uses eax ecx edx
 		mov edx, 4
 		mul edx
 		add eax, OFFSET chessboard
-		mov [eax], cl		; Íê³ÉÑÕÉ«³õÊ¼»¯
+		mov [eax], cl		; å®Œæˆé¢œè‰²åˆå§‹åŒ–
 		pop eax
 
-		add eax, 2	; ÓĞĞ§¸ñ×ÓµÈ¼ÛÓÚÏÂ±êÎªÅ¼Êı
+		add eax, 2	; æœ‰æ•ˆæ ¼å­ç­‰ä»·äºä¸‹æ ‡ä¸ºå¶æ•°
 	.ENDW
 	ret
 InitializeBoard ENDP
+
+;------------------è·å–ç›®æ ‡åœ°å€
+Cal_address PROC src: DWORD,
+				 row: DWORD,
+				 col: DWORD
+	push edx
+	push ecx
+	mov eax, row
+	mul col_num
+	mul cell_size
+	add src, eax
+	mov eax, col
+	mul cell_size
+	add src, eax
+	mov eax, src
+	pop ecx
+	pop edx
+	ret
+Cal_address ENDP
+
+;------------------äº¤æ¢å‡½æ•°
+;------------------ä¾ç…§é¡ºåºäº¤æ¢å·¦ä¸Šã€ä¸Šã€å³ä¸Šã€å·¦ä¸‹ã€ä¸‹ã€å³ä¸‹
+All_Swap PROC dir: DWORD,
+			  row: DWORD,
+			  col: DWORD
+			  local @target_row: DWORD
+			  local @target_col: DWORD
+			  local @chess_1: CELL
+			  local @chess_2: CELL
+	pushad
+	mov eax, row
+	mov @target_row, eax
+	mov eax, col
+	mov @target_col, eax
+	mov ecx, dir
+	.if ecx == 0
+		dec @target_row
+		dec @target_col
+	.elseif ecx == 1
+		sub @target_row, 2
+	.elseif ecx == 2
+		dec @target_row
+		inc @target_col
+	.elseif ecx == 3
+		inc @target_row
+		dec @target_col
+	.elseif ecx == 4
+		add @target_row, 2
+	.elseif ecx == 5
+		inc @target_row
+		inc @target_col
+	.endif
+
+	mov ebx, @target_row
+	mov ecx, @target_col
+	.if ebx < 0 || ebx >= row_num || ecx < 0 || ecx >= col_num
+		mov eax, 0
+		ret
+	.endif
+
+	INVOKE Cal_address, OFFSET chessboard, row, col
+	mov edx, eax
+	mov eax, [edx]
+	mov @chess_1, eax
+
+	INVOKE Cal_address, OFFSET chessboard, @target_row, @target_col
+	mov ebx, [eax]
+	mov @chess_2, ebx
+	
+	mov ebx, @chess_1
+	mov [eax], ebx
+	mov ebx, @chess_2
+	mov [edx], ebx
+
+	popad
+	ret
+All_Swap ENDP
+
+;------------------è®¡æ•°æœ‰å¤šå°‘ä¸ªç›¸åŒè‰²çš„æ£‹å­è¿åœ¨ä¸€èµ·
+Count PROC row: DWORD,
+		   col: DWORD,
+		   color: BYTE,
+		   dir: DWORD
+		   local @chess: CELL
+		   local @target_row: DWORD
+		   local @target_col: DWORD
+		   local @count: DWORD
+		   local @bonus_count:DWORD
+		   local @flag:DWORD
+
+	push ecx
+	push ebx
+	push edx
+
+	mov edx, OFFSET chessboard
+	mov eax, row
+	mov @target_row, eax
+	mov eax, col
+	mov @target_col, eax
+	mov @count, 0
+	mov @bonus_count, 0
+	mov @flag, 1
+
+	.while @flag == 1
+		.if	dir == 0		
+			dec @target_row
+			dec @target_col
+		.elseif dir == 1
+			sub @target_row, 2
+		.elseif dir == 2
+			dec @target_row
+			inc @target_col
+		.endif
+
+		mov eax, @target_row
+		mov ebx, @target_col
+		.if eax >= 0 && eax < row_num && ebx >= 0 && ebx < col_num
+			INVOKE Cal_address, edx, @target_row, @target_col
+			mov eax, [eax]
+			mov @chess, eax
+			mov al, @chess.m_color
+			.if al == color
+				inc @count
+				.if @chess.m_type == 1
+					inc @bonus_count
+				.endif
+			.else
+				mov @flag, 0
+			.endif
+		.else
+			mov @flag, 0
+		.endif
+	.endw
+
+	mov eax, row
+	mov @target_row, eax
+	mov eax, col
+	mov @target_col, eax
+	mov @flag, 1
+	.while @flag == 1
+		.if	dir == 0		
+			inc @target_row
+			inc @target_col
+		.elseif dir == 1
+			add @target_row, 2
+		.elseif dir == 2
+			inc @target_row
+			dec @target_col
+		.endif
+			
+		mov eax, @target_row
+		mov ebx, @target_col
+		.if eax >= 0 && eax < row_num && ebx >= 0 && ebx < col_num		
+			INVOKE Cal_address, edx, @target_row, @target_col
+			mov eax, [eax]
+			mov @chess, eax
+			mov al, @chess.m_color
+			.if al == color
+				inc @count
+				.if @chess.m_type == 1
+					inc @bonus_count
+				.endif
+			.else
+				mov @flag, 0
+			.endif
+		.else
+			mov @flag, 0
+		.endif
+	.endw
+
+	mov eax, 0
+	.if @count >= 3
+		mov eax, 10
+		mul @count
+	.endif
+	.if @bonus_count > 0
+		add eax, 300
+	.endif
+	
+	pop edx
+	pop ebx
+	pop ecx
+	ret
+Count ENDP
+
+;------------------ä»å•ä¸ªæ£‹å­å‡ºå‘ï¼Œç»™å‡ºè¯„åˆ†
+Grade PROC	row: DWORD,
+			col: DWORD
+			local @chess: CELL
+			local @color: BYTE
+			local @dir: DWORD
+			local @score: DWORD
+	push edx
+	mov edx, OFFSET chessboard
+	INVOKE Cal_address, edx, row, col
+	mov eax, [eax]
+	mov @chess, eax
+	mov al, @chess.m_color
+	mov @color, al 
+	mov @dir, 0
+	mov @score, 0
+
+	.WHILE @dir < 3
+		INVOKE Count, row, col, @color, @dir
+		add @score, eax
+		inc @dir
+	.endw
+
+	mov eax, @score
+	pop edx
+	ret
+Grade ENDP
+
+;------------------AI
+;------------------é‡‡ç”¨è´ªå¿ƒçš„æ–¹å¼ï¼Œå½“å‰æ‰€æœ‰çš„å¯èƒ½é€‰æ‹©å¾—åˆ†æœ€é«˜çš„ä¸€ç§
+AI PROC
+		local @chess_1: CELL						;è¦ç§»åŠ¨çš„æ£‹å­ä¸€
+		local @chess_2: CELL						;è¦ç§»åŠ¨çš„æ£‹å­äºŒ
+		local @row: DWORD							;å½“å‰éå†çš„è¡Œ
+		local @col: DWORD							;å½“å‰éå†çš„åˆ—
+		local @dir: DWORD							;å½“å‰éå†çš„æ–¹å‘
+		local @target_row: DWORD					;ç›®æ ‡è¡Œ
+		local @target_col: DWORD					;ç›®æ ‡åˆ—
+		local @max_score: DWORD						;æœ€å¤§å¾—åˆ†
+		local @score: DWORD							;å½“å‰å¾—åˆ†
+		local @type: DWORD							;æ¯è¡Œæœ‰5ä¸ªæˆ–4ä¸ªæ£‹å­ï¼Œåˆ†ä¸º5ã€4ä¸¤ä¸ªç±»
+
+	pushad
+	mov @max_score, 0			
+	mov @row, 0
+	mov @col, 0
+	mov @dir, 0
+	mov @target_row, 0
+	mov @target_col, 0
+	mov edx, OFFSET chessboard
+	mov @type, 5
+
+	mov ecx, 0
+	.WHILE ecx < row_num
+		push ecx
+
+		.if @type == 5
+			mov ecx, 0
+		.elseif	@type == 4
+			mov ecx, 1
+		.endif
+		mov @col, ecx
+
+		.WHILE ecx < col_num
+			push ecx
+			mov ecx, 0
+			mov @dir, ecx
+
+			.WHILE ecx < dir_num
+				push ecx
+
+				INVOKE All_Swap, @dir, @row, @col
+				mov eax, @row
+				mov @target_row, eax
+				mov eax, @col
+				mov @target_col, eax
+				.if @dir == 0
+					dec @target_row
+					dec @target_col
+				.elseif @dir == 1
+					sub @target_row, 2
+				.elseif @dir == 2
+					dec @target_row
+					inc @target_col
+				.elseif @dir == 3
+					inc @target_row
+					dec @target_col
+				.elseif @dir == 4
+					add @target_row, 2
+				.elseif @dir == 5
+					inc @target_row
+					inc @target_col
+				.endif
+
+				.if eax > 0
+					INVOKE Grade, @row, @col
+					mov @score, eax
+					INVOKE Grade, @target_row, @target_col
+					add @score, eax
+					mov ebx, @score
+					.if ebx > @max_score
+						INVOKE Cal_address, edx, @row, @col
+						mov eax, [eax]
+						mov @chess_1, eax
+						INVOKE Cal_address, edx, @target_row, @target_col
+						mov eax, [eax]
+						mov @chess_2, eax
+						mov eax, @score
+						mov @max_score, eax
+					.endif
+				.endif
+				INVOKE All_Swap, @dir, @row, @col
+				
+				pop ecx
+				inc ecx
+				inc @dir
+			.endw
+
+			pop ecx
+			add ecx, 2
+			add @col ,2
+		.endw
+
+		;æ¯è¡Œä¹‹é—´ç±»å‹å‘ç”Ÿå˜æ¢
+		.if @type == 5
+			mov @type, 4
+		.elseif	@type == 4
+			mov @type, 5
+		.endif
+		pop ecx
+		inc ecx
+		inc @row
+	.endw
+
+	popad
+	ret
+AI ENDP
+
 ;-----------------------
 WinMain PROC
-; windows´°¿Ú³ÌĞòÈë¿Úº¯Êı
+; windowsçª—å£ç¨‹åºå…¥å£å‡½æ•°
 ;--------------
+	; æ’­æ”¾éŸ³ä¹
+	invoke mciSendString, ADDR playSongCommand, NULL, 0, NULL;
 
-	; »ñµÃµ±Ç°³ÌĞò¾ä±ú
+	; è·å¾—å½“å‰ç¨‹åºå¥æŸ„
 	INVOKE GetModuleHandle, NULL
 	mov hInstance, eax
 	mov MainWin.hInstance, eax
@@ -438,7 +771,7 @@ WinMain PROC
 	mov MainWin.cbSize, sizeof WNDCLASSEX
 	mov MainWin.style, CS_HREDRAW or CS_VREDRAW
 
-	; »ñÈ¡Í¼±êºÍ¹â±ê
+	; è·å–å›¾æ ‡å’Œå…‰æ ‡
 	INVOKE LoadIcon, NULL, IDI_APPLICATION
 	mov MainWin.hIcon, eax
 	INVOKE LoadCursor, NULL, IDC_ARROW
@@ -448,14 +781,14 @@ WinMain PROC
 	;mov MainWin.style, CS_HREDRAW or CS_VREDRAW
 	mov MainWin.hbrBackground, COLOR_MENUTEXT + 1
 
-	; ×¢²á´°¿Ú
+	; æ³¨å†Œçª—å£
 	INVOKE RegisterClassEx, ADDR MainWin
 	.IF eax == 0
 	  ;call ErrorHandler
 	  jmp Exit_Program
 	.ENDIF
 
-	; ³õÊ¼»¯GDI+
+	; åˆå§‹åŒ–GDI+
 	INVOKE	GdiplusStartup, ADDR m_GdiplusToken, ADDR StartupInput, 0
 
 	; Create the application's main window.
@@ -506,7 +839,7 @@ WinMain ENDP
 ;-------------------
 TimerUpdate PROC,
 	hWnd:DWORD
-; ¸üĞÂÊı¾İ£¨m_color, m_scale×îºÃÖ»ÔÚÆäÖĞ¸üĞÂ£©
+; æ›´æ–°æ•°æ®ï¼ˆm_color, m_scaleæœ€å¥½åªåœ¨å…¶ä¸­æ›´æ–°ï¼‰
 ;----------------
 	local	@i:DWORD
 	local	@j:DWORD
@@ -536,12 +869,12 @@ TimerUpdate ENDP
 ;-----------------------------------------------------
 WinProc PROC uses ebx edi esi,
 	hWnd:DWORD, localMsg:DWORD, wParam:DWORD, lParam:DWORD
-; windows´°¿ÚÏûÏ¢´¦Àí
+; windowsçª—å£æ¶ˆæ¯å¤„ç†
 ;-----------------------------------------------------
 	mov eax, localMsg
 
 	.IF eax == WM_PAINT
-		; µ÷ÓÃ»æÍ¼¹ı³Ì
+		; è°ƒç”¨ç»˜å›¾è¿‡ç¨‹
 		INVOKE PaintProc, hWnd, wParam, lParam
 		INVOKE SetTimer, hWnd, TIMER_GAMETIMER, TIMER_GAMETIMER_ELAPSE, NULL
 		
@@ -567,7 +900,7 @@ WinProc ENDP
 ;-----------------------------------------------------
 PaintProc PROC,
 	hWnd:DWORD, wParam:DWORD, lParam:DWORD
-; »æÖÆ
+; ç»˜åˆ¶
 ;-----------------------------------------------------
 	local   @ps:PAINTSTRUCT
 	local   @blankBmp:HBITMAP
@@ -639,7 +972,7 @@ PaintProc PROC,
 				inc @j
 			.UNTIL @j == 5
 		.ENDIF
-		add @y, COLUMN_CELL_SPACE	; ĞĞyÖµ
+		add @y, COLUMN_CELL_SPACE	; è¡Œyå€¼
 		inc @i
 	.UNTIL @i == 17
 
@@ -779,7 +1112,7 @@ PaintProc PROC,
 
 			.UNTIL @j == 5
 		.ENDIF
-		add @y, COLUMN_CELL_SPACE	; ĞĞyÖµ
+		add @y, COLUMN_CELL_SPACE	; è¡Œyå€¼
 		inc @i
 	.UNTIL @i == 17
 
@@ -796,7 +1129,7 @@ PaintProc ENDP
 ;-----------------------------------------------------
 InitLoadProc PROC,
 	hWnd:DWORD, wParam:DWORD, lParam:DWORD
-; ¼ÓÔØ×ÊÔ´ÎÄ¼ş
+; åŠ è½½èµ„æºæ–‡ä»¶
 ;-----------------------------------------------------
 	INVOKE GdipLoadImageFromFile, OFFSET chessBg, ADDR hChessBg
 	INVOKE GdipLoadImageFromFile, OFFSET chessRed, ADDR hChessType1
