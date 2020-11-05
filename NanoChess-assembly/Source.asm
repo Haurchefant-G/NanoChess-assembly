@@ -491,6 +491,162 @@ InitializeBoard PROC uses eax ecx edx
 	ret
 InitializeBoard ENDP
 
+; 传入eax对应下标的位置且此处为炸弹，位于ebx行、edx列，随机打乱周围六格的颜色
+RandomShuffleByBomb PROC uses eax ebx ecx edx
+	; 从左上开始顺时针随机赋值
+	.IF ebx >= 1 && edx >= 1
+		; 左上
+		push eax
+		push ebx
+		push edx
+		sub eax, 10
+		mov ecx, 4
+		mul ecx
+		add eax, OFFSET chessboard
+		inc eax
+		mov ecx, 0
+		mov [eax], ecx	; 对齐到m_type并置为0
+		inc eax
+
+		push eax
+		invoke nrandom, 6
+		mov edx, eax
+		inc edx
+		pop eax
+		mov [eax], dl	; 对齐到m_newColor并随机初始化
+
+		pop edx
+		pop ebx
+		pop eax
+	.ENDIF
+	.IF ebx >= 2
+		; 上
+		push eax
+		push ebx
+		push edx
+		sub eax, 18
+		mov ecx, 4
+		mul ecx
+		add eax, OFFSET chessboard
+		inc eax
+		mov ecx, 0
+		mov [eax], ecx	; 对齐到m_type并置为0
+		inc eax
+
+		push eax
+		invoke nrandom, 6
+		mov edx, eax
+		inc edx
+		pop eax
+		mov [eax], dl	; 对齐到m_newColor并随机初始化
+
+		pop edx
+		pop ebx
+		pop eax
+	.ENDIF
+	.IF ebx >= 1 && edx <= 7
+		; 右上
+		push eax
+		push ebx
+		push edx
+		sub eax, 8
+		mov ecx, 4
+		mul ecx
+		add eax, OFFSET chessboard
+		inc eax
+		mov ecx, 0
+		mov [eax], ecx	; 对齐到m_type并置为0
+		inc eax
+
+		push eax
+		invoke nrandom, 6
+		mov edx, eax
+		inc edx
+		pop eax
+		mov [eax], dl	; 对齐到m_newColor并随机初始化
+
+		pop edx
+		pop ebx
+		pop eax
+	.ENDIF
+	.IF ebx <= 15 && edx <= 7
+		; 右下
+		push eax
+		push ebx
+		push edx
+		add eax, 10
+		mov ecx, 4
+		mul ecx
+		add eax, OFFSET chessboard
+		inc eax
+		mov ecx, 0
+		mov [eax], ecx	; 对齐到m_type并置为0
+		inc eax
+
+		push eax
+		invoke nrandom, 6
+		mov edx, eax
+		inc edx
+		pop eax
+		mov [eax], dl	; 对齐到m_newColor并随机初始化
+
+		pop edx
+		pop ebx
+		pop eax
+	.ENDIF
+	.IF ebx <= 14
+		; 下
+		push eax
+		push ebx
+		push edx
+		add eax, 18
+		mov ecx, 4
+		mul ecx
+		add eax, OFFSET chessboard
+		inc eax
+		mov ecx, 0
+		mov [eax], ecx	; 对齐到m_type并置为0
+		inc eax
+
+		push eax
+		invoke nrandom, 6
+		mov edx, eax
+		inc edx
+		pop eax
+		mov [eax], dl	; 对齐到m_newColor并随机初始化
+
+		pop edx
+		pop ebx
+		pop eax
+	.ENDIF
+	.IF ebx <= 15 && edx >= 1
+		; 左下
+		push eax
+		push ebx
+		push edx
+		add eax, 8
+		mov ecx, 4
+		mul ecx
+		add eax, OFFSET chessboard
+		inc eax
+		mov ecx, 0
+		mov [eax], ecx	; 对齐到m_type并置为0
+		inc eax
+
+		push eax
+		invoke nrandom, 6
+		mov edx, eax
+		inc edx
+		pop eax
+		mov [eax], dl	; 对齐到m_newColor并随机初始化
+
+		pop edx
+		pop ebx
+		pop eax
+	.ENDIF
+	ret
+RandomShuffleByBomb ENDP
+
 ; 遍历整个棋盘，查看是否存在三/四/五连的连续同颜色元素（只处理一次，不递归处理！）
 ; 若存在连续同颜色元素，把中间的赋为炸弹，剩下的全部随机赋值到m_newColor（为连续效果不避免重复，因而需要多次调用），且返回eax=1
 ; 若整个棋盘都不存在连续同颜色元素了，返回eax=0
@@ -864,31 +1020,230 @@ InspectAndResolveContinuousCells PROC
 		;	若有炸弹，将所有炸弹周围的六个格子都消掉，随机赋值颜色
 		;	然后将中间三个元素设置为炸弹，剩下两头随机赋值颜色
 		.IF @longestContLength >= 3
+			invoke GetTickCount
+			invoke nseed, eax
 			mov @findContCells, 1
-			.IF @longestContLength == 3
-				.IF @longestContLength == 0
 
-				.ELSEIF @longestContLength == 1
-				
-				.ELSEIF @longestContLength == 2
+			push eax
+			push edx
+			mov edx, 0
+			mov ebx, 9
+			div ebx
+			mov ebx, eax	; 将当前行数存在ebx中
+			pop edx
+			pop eax
 
-				.ENDIF
-			.ELSEIF @longestContLength == 4
-				.IF @longestContLength == 0
+			.IF @longestDirection == 0
+				; 先沿着这个方向找有没有炸弹：有炸弹则立刻将其周围六格及其本身随机赋值
+				; 此时由于已知此方向有长度为3的连续元素，不必再判断边界
+				mov ecx, 0
+				push eax
+				push ebx
+				push edx
+				.WHILE ecx < @longestContLength
+					push ecx
 
-				.ELSEIF @longestContLength == 1
-				
-				.ELSEIF @longestContLength == 2
+					push eax
+					push ebx
+					push edx
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					inc eax		; 对齐到m_type
+					mov cl, byte ptr [eax]	; 这个格子的道具类型
+					pop edx
+					pop ebx
+					pop eax
+					; 如果是炸弹，先执行周围一圈的随机初始化
+					.IF cl == 1
+						invoke RandomShuffleByBomb
+					.ENDIF
+					add eax, 8		; 向左下挪一个格子
+					inc ebx
+					dec edx
 
-				.ENDIF
-			.ELSEIF @longestContLength == 5
-				.IF @longestContLength == 0
+					pop ecx
+					inc ecx
+				.ENDW
+				pop edx
+				pop ebx
+				pop eax
+					
+				; 然后再执行这个方向上的随机初始化
+				mov ecx, 0
+				push eax
+				push ebx
+				push edx
+				.WHILE ecx < @longestContLength
+					push ecx
+					
+					push eax
+					push ebx
+					push edx
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					add eax, 2		; 对齐到m_newColor
+					push eax
+					invoke nrandom, 6
+					mov edx, eax
+					inc edx
+					pop eax
+					mov [eax], dl	; 对齐到m_newColor并随机初始化
+					pop edx
+					pop ebx
+					pop eax
 
-				.ELSEIF @longestContLength == 1
-				
-				.ELSEIF @longestContLength == 2
+					add eax, 8		; 向左下挪一个格子
+					inc ebx
+					dec edx
 
-				.ENDIF
+					pop ecx
+					inc ecx
+				.ENDW
+				pop edx
+				pop ebx
+				pop eax
+			.ELSEIF @longestDirection == 1
+				; 先沿着这个方向找有没有炸弹：有炸弹则立刻将其周围六格及其本身随机赋值
+				; 此时由于已知此方向有长度为3的连续元素，不必再判断边界
+				mov ecx, 0
+				push eax
+				push ebx
+				push edx
+				.WHILE ecx < @longestContLength
+					push ecx
+
+					push eax
+					push ebx
+					push edx
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					inc eax		; 对齐到m_type
+					mov cl, byte ptr [eax]	; 这个格子的道具类型
+					pop edx
+					pop ebx
+					pop eax
+					; 如果是炸弹，先执行周围一圈的随机初始化
+					.IF cl == 1
+						invoke RandomShuffleByBomb
+					.ENDIF
+					add eax, 18		; 向下挪一个格子
+					add ebx, 2
+
+					pop ecx
+					inc ecx
+				.ENDW
+				pop edx
+				pop ebx
+				pop eax
+					
+				; 然后再执行这个方向上的随机初始化
+				mov ecx, 0
+				push eax
+				push ebx
+				push edx
+				.WHILE ecx < @longestContLength
+					push ecx
+					
+					push eax
+					push ebx
+					push edx
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					add eax, 2		; 对齐到m_newColor
+					push eax
+					invoke nrandom, 6
+					mov edx, eax
+					inc edx
+					pop eax
+					mov [eax], dl	; 对齐到m_newColor并随机初始化
+					pop edx
+					pop ebx
+					pop eax
+
+					add eax, 18		; 向下挪一个格子
+					add ebx, 2
+
+					pop ecx
+					inc ecx
+				.ENDW
+				pop edx
+				pop ebx
+				pop eax
+			.ELSEIF @longestDirection == 2
+				; 先沿着这个方向找有没有炸弹：有炸弹则立刻将其周围六格及其本身随机赋值
+				; 此时由于已知此方向有长度为3的连续元素，不必再判断边界
+				mov ecx, 0
+				push eax
+				push ebx
+				push edx
+				.WHILE ecx < @longestContLength
+					push ecx
+
+					push eax
+					push ebx
+					push edx
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					inc eax		; 对齐到m_type
+					mov cl, byte ptr [eax]	; 这个格子的道具类型
+					pop edx
+					pop ebx
+					pop eax
+					; 如果是炸弹，先执行周围一圈的随机初始化
+					.IF cl == 1
+						invoke RandomShuffleByBomb
+					.ENDIF
+					add eax, 10		; 向右下挪一个格子
+					inc ebx
+					inc edx
+
+					pop ecx
+					inc ecx
+				.ENDW
+				pop edx
+				pop ebx
+				pop eax
+					
+				; 然后再执行这个方向上的随机初始化
+				mov ecx, 0
+				push eax
+				push ebx
+				push edx
+				.WHILE ecx < @longestContLength
+					push ecx
+					
+					push eax
+					push ebx
+					push edx
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					add eax, 2		; 对齐到m_newColor
+					push eax
+					invoke nrandom, 6
+					mov edx, eax
+					inc edx
+					pop eax
+					mov [eax], dl	; 对齐到m_newColor并随机初始化
+					pop edx
+					pop ebx
+					pop eax
+
+					add eax, 10		; 向右下挪一个格子
+					inc ebx
+					inc edx
+
+					pop ecx
+					inc ecx
+				.ENDW
+				pop edx
+				pop ebx
+				pop eax
 			.ENDIF
 		.ENDIF
 
