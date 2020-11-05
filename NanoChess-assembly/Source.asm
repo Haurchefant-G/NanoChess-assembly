@@ -1797,6 +1797,7 @@ TimerUpdate PROC,
 					; 之前触发了三消，则直接回到游戏场景
 					mov selectedChessOne, -1
 					mov GAME_STATUS, 0
+					mov CLICK_ENABLE, 1
 				.ENDIF
 			.ELSE
 				; 存在三消，消去棋子并显示新棋子
