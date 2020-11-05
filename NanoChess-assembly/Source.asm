@@ -1257,8 +1257,8 @@ InspectAndResolveContinuousCells PROC
 
 		add eax, 2	; 有效格子等价于下标为偶数
 	.ENDW
-	mov eax, @findContCells
 foundAndExit:
+	mov eax, @longestContLength	; todo: 添加记录被炸弹消掉的元素个数
 	ret
 InspectAndResolveContinuousCells ENDP
 
