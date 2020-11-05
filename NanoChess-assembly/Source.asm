@@ -1024,8 +1024,10 @@ InspectAndResolveContinuousCells PROC
 		;	然后将中间三个元素设置为炸弹，剩下两头随机赋值颜色
 		.IF @longestContLength >= 3
 			push eax
+			push edx
 			invoke GetTickCount
 			invoke nseed, eax
+			pop edx
 			pop eax
 			mov @findContCells, 1
 
@@ -1250,11 +1252,13 @@ InspectAndResolveContinuousCells PROC
 				pop ebx
 				pop eax
 			.ENDIF
+			jmp foundAndExit
 		.ENDIF
 
 		add eax, 2	; 有效格子等价于下标为偶数
 	.ENDW
 	mov eax, @findContCells
+foundAndExit:
 	ret
 InspectAndResolveContinuousCells ENDP
 
