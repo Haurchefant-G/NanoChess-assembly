@@ -1023,8 +1023,10 @@ InspectAndResolveContinuousCells PROC
 		;	若有炸弹，将所有炸弹周围的六个格子都消掉，随机赋值颜色
 		;	然后将中间三个元素设置为炸弹，剩下两头随机赋值颜色
 		.IF @longestContLength >= 3
+			push eax
 			invoke GetTickCount
 			invoke nseed, eax
+			pop eax
 			mov @findContCells, 1
 
 			push eax
