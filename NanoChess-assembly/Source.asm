@@ -492,11 +492,398 @@ InitializeBoard PROC uses eax ecx edx
 InitializeBoard ENDP
 
 ; 遍历整个棋盘，查看是否存在三/四/五连的连续同颜色元素（只处理一次，不递归处理！）
-; 若存在连续同颜色元素，把中间的赋为炸弹，剩下的全部随机赋值（为连续效果不避免重复，因而需要多次调用），且返回eax=1
+; 若存在连续同颜色元素，把中间的赋为炸弹，剩下的全部随机赋值到m_newColor（为连续效果不避免重复，因而需要多次调用），且返回eax=1
 ; 若整个棋盘都不存在连续同颜色元素了，返回eax=0
 ; 注意：调用一次就需要绘制一次新棋盘，且要重复此过程直至确保不存在连续元素为止（即返回的eax为0）
-InspectAndResolveContinuousCells PROC
-	
+InspectAndResolveContinuousCells PROC	
+	local @findContCells: DWORD
+	local @currentContLength: DWORD
+	local @longestContLength: DWORD
+	local @longestDirection: DWORD
+	local @longestIndex: DWORD
+	local @currentColor: BYTE
+	local @nextColor: BYTE
+	; @findContCells 记录全局是否找到了3个及以上的连续元素（即棋盘是否有变动），是为1否为0
+	; @currentContLength 记录当前连续相同颜色串的长度
+	; @longestContLength 记录当前位置最长连续相同颜色串的长度
+	; @longestDirection 记录对应当前元素最长的连续元素序列方向（0左下，1下，2右下）
+	; @longestIndex 记录最长元素的位置（debug用）
+	; @nextColor 只记录下一个Cell的颜色（之前的Cell颜色一定等于currentColor，否则已经跳出）
+	mov @findContCells, 0
+	mov @longestContLength, 1
+	mov eax, 0
+	.WHILE eax < 153
+		; 对于每一个格子，只检测左下、下、右下三个方向是否存在三个连续的相同元素
+		; 越界的就不再检测了
+		push eax
+		mov edx, 0
+		mov ecx, 9
+		div ecx	; 获取当前是第几列并存在edx中
+		pop eax
+
+		push eax
+		push edx
+		mov ecx, 4
+		mul ecx
+		add eax, OFFSET chessboard
+		mov al, byte ptr [eax]	; 记录当前格子的颜色
+		mov @currentColor, al
+		mov bl, @currentColor	; 用bl存储当前格子的颜色，方便比较
+		pop edx
+		pop eax
+		
+		; 先向左下方检测
+		push eax
+		push edx
+		mov @currentContLength, 1
+		.IF eax <= 152 - 8 && edx >= 1
+			; 如果左下方第一格没有越界
+			push eax
+			push edx
+			add eax, 8
+			mov ecx, 4
+			mul ecx
+			add eax, OFFSET chessboard
+			mov al, byte ptr [eax]	; 左下方第一个格子的颜色
+			mov @nextColor, al
+			pop edx
+			pop eax
+			.IF bl == @nextColor
+				inc @currentContLength		; 连续相同颜色的长度+1
+				push esi
+				mov esi, @longestContLength
+				.IF @currentContLength > esi
+					mov esi, @currentContLength
+					mov @longestContLength, esi
+					mov @longestDirection, 0
+				.ENDIF
+				pop esi
+				.IF eax <= 152 - 16 && edx >= 2
+					; 如果左下方第二格没有越界
+					push eax
+					push edx
+					add eax, 16
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					mov al, byte ptr [eax]	; 左下方第二个格子的颜色
+					mov @nextColor, al
+					pop edx
+					pop eax
+					.IF bl == @nextColor
+						inc @currentContLength		; 连续相同颜色的长度+1
+						push esi
+						mov esi, @longestContLength
+						.IF @currentContLength > esi
+							mov esi, @currentContLength
+							mov @longestContLength, esi
+							mov @longestDirection, 0
+						.ENDIF
+						pop esi
+						.IF eax <= 152 - 24 && edx >= 3
+							; 如果左下方第三格没有越界
+							push eax
+							push edx
+							add eax, 24
+							mov ecx, 4
+							mul ecx
+							add eax, OFFSET chessboard
+							mov al, byte ptr [eax]	; 左下方第三个格子的颜色
+							mov @nextColor, al
+							pop edx
+							pop eax
+							.IF bl == @nextColor
+								inc @currentContLength		; 连续相同颜色的长度+1
+								push esi
+								mov esi, @longestContLength
+								.IF @currentContLength > esi
+									mov esi, @currentContLength
+									mov @longestContLength, esi
+									mov @longestDirection, 0
+								.ENDIF
+								pop esi
+								.IF eax <= 152 - 32 && edx >= 4
+									; 如果左下方第四格没有越界
+									push eax
+									push edx
+									add eax, 32
+									mov ecx, 4
+									mul ecx
+									add eax, OFFSET chessboard
+									mov al, byte ptr [eax]	; 左下方第四个格子的颜色
+									mov @nextColor, al
+									pop edx
+									pop eax
+									.IF bl == @nextColor
+										inc @currentContLength		; 连续相同颜色的长度+1
+										push esi
+										mov esi, @longestContLength
+										.IF @currentContLength > esi
+											mov esi, @currentContLength
+											mov @longestContLength, esi
+											mov @longestDirection, 0
+										.ENDIF
+										pop esi
+									.ENDIF
+								.ENDIF
+							.ENDIF
+						.ENDIF
+					.ENDIF
+				.ENDIF
+			.ENDIF
+		.ENDIF
+		pop edx
+		pop eax
+
+		; 再向下方检测
+		push eax
+		push edx
+		mov @currentContLength, 1
+		.IF eax <= 152 - 18
+			; 如果下方第一格没有越界
+			push eax
+			push edx
+			add eax, 18
+			mov ecx, 4
+			mul ecx
+			add eax, OFFSET chessboard
+			mov al, byte ptr [eax]	; 下方第一个格子的颜色
+			mov @nextColor, al
+			pop edx
+			pop eax
+			.IF bl == @nextColor
+				inc @currentContLength		; 连续相同颜色的长度+1
+				push esi
+				mov esi, @longestContLength
+				.IF @currentContLength > esi
+					mov esi, @currentContLength
+					mov @longestContLength, esi
+					mov @longestDirection, 1
+				.ENDIF
+				pop esi
+				.IF eax <= 152 - 36
+					; 如果下方第二格没有越界
+					push eax
+					push edx
+					add eax, 36
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					mov al, byte ptr [eax]	; 下方第二个格子的颜色
+					mov @nextColor, al
+					pop edx
+					pop eax
+					.IF bl == @nextColor
+						inc @currentContLength		; 连续相同颜色的长度+1
+						push esi
+						mov esi, @longestContLength
+						.IF @currentContLength > esi
+							mov esi, @currentContLength
+							mov @longestContLength, esi
+							mov @longestDirection, 1
+						.ENDIF
+						pop esi
+						.IF eax <= 152 - 54
+							; 如果下方第三格没有越界
+							push eax
+							push edx
+							add eax, 54
+							mov ecx, 4
+							mul ecx
+							add eax, OFFSET chessboard
+							mov al, byte ptr [eax]	; 下方第三个格子的颜色
+							mov @nextColor, al
+							pop edx
+							pop eax
+							.IF bl == @nextColor
+								inc @currentContLength		; 连续相同颜色的长度+1
+								push esi
+								mov esi, @longestContLength
+								.IF @currentContLength > esi
+									mov esi, @currentContLength
+									mov @longestContLength, esi
+									mov @longestDirection, 1
+								.ENDIF
+								pop esi
+								.IF eax <= 152 - 72
+									; 如果下方第四格没有越界
+									push eax
+									push edx
+									add eax, 72
+									mov ecx, 4
+									mul ecx
+									add eax, OFFSET chessboard
+									mov al, byte ptr [eax]	; 下方第四个格子的颜色
+									mov @nextColor, al
+									pop edx
+									pop eax
+									.IF bl == @nextColor
+										inc @currentContLength		; 连续相同颜色的长度+1
+										push esi
+										mov esi, @longestContLength
+										.IF @currentContLength > esi
+											mov esi, @currentContLength
+											mov @longestContLength, esi
+											mov @longestDirection, 1
+										.ENDIF
+										pop esi
+									.ENDIF
+								.ENDIF
+							.ENDIF
+						.ENDIF
+					.ENDIF
+				.ENDIF
+			.ENDIF
+		.ENDIF
+		pop edx
+		pop eax
+
+		; 最后向右下方检测
+		push eax
+		push edx
+		mov @currentContLength, 1
+		.IF eax <= 152 - 10 && edx <= 7
+			; 如果右下方第一格没有越界
+			push eax
+			push edx
+			add eax, 10
+			mov ecx, 4
+			mul ecx
+			add eax, OFFSET chessboard
+			mov al, byte ptr [eax]	; 右下方第一个格子的颜色
+			mov @nextColor, al
+			pop edx
+			pop eax
+			.IF bl == @nextColor
+				inc @currentContLength		; 连续相同颜色的长度+1
+				push esi
+				mov esi, @longestContLength
+				.IF @currentContLength > esi
+					mov esi, @currentContLength
+					mov @longestContLength, esi
+					mov @longestDirection, 2
+				.ENDIF
+				pop esi
+				.IF eax <= 152 - 20 && edx <= 6
+					; 如果右下方第二格没有越界
+					push eax
+					push edx
+					add eax, 20
+					mov ecx, 4
+					mul ecx
+					add eax, OFFSET chessboard
+					mov al, byte ptr [eax]	; 右下方第二个格子的颜色
+					mov @nextColor, al
+					pop edx
+					pop eax
+					.IF bl == @nextColor
+						inc @currentContLength		; 连续相同颜色的长度+1
+						push esi
+						mov esi, @longestContLength
+						.IF @currentContLength > esi
+							mov esi, @currentContLength
+							mov @longestContLength, esi
+							mov @longestDirection, 2
+						.ENDIF
+						pop esi
+						.IF eax <= 152 - 30 && edx <= 5
+							; 如果左下方第三格没有越界
+							push eax
+							push edx
+							add eax, 30
+							mov ecx, 4
+							mul ecx
+							add eax, OFFSET chessboard
+							mov al, byte ptr [eax]	; 右下方第三个格子的颜色
+							mov @nextColor, al
+							pop edx
+							pop eax
+							.IF bl == @nextColor
+								inc @currentContLength		; 连续相同颜色的长度+1
+								push esi
+								mov esi, @longestContLength
+								.IF @currentContLength > esi
+									mov esi, @currentContLength
+									mov @longestContLength, esi
+									mov @longestDirection, 2
+								.ENDIF
+								pop esi
+								.IF eax <= 152 - 40 && edx <= 4
+									; 如果右下方第四格没有越界
+									push eax
+									push edx
+									add eax, 40
+									mov ecx, 4
+									mul ecx
+									add eax, OFFSET chessboard
+									mov al, byte ptr [eax]	; 右下方第四个格子的颜色
+									mov @nextColor, al
+									pop edx
+									pop eax
+									.IF bl == @nextColor
+										inc @currentContLength		; 连续相同颜色的长度+1
+										push esi
+										mov esi, @longestContLength
+										.IF @currentContLength > esi
+											mov esi, @currentContLength
+											mov @longestContLength, esi
+											mov @longestDirection, 2
+										.ENDIF
+										pop esi
+									.ENDIF
+								.ENDIF
+							.ENDIF
+						.ENDIF
+					.ENDIF
+				.ENDIF
+			.ENDIF
+		.ENDIF
+		pop edx
+		pop eax
+			
+		; 检测完以后，根据@longestContLength进行变化：
+		; 若只有三个连续：
+		;	若有炸弹，则所有炸弹周围一圈的六个格子都消掉，随机赋值颜色
+		;	然后将中间元素设置为炸弹，两头随机赋值颜色
+		; 若有四个连续：
+		;	若有炸弹，将所有炸弹周围的六个格子都消掉，随机赋值颜色
+		;	然后将中间两个元素设置为炸弹，剩下两头随机赋值颜色
+		; 若有五个连续：
+		;	若有炸弹，将所有炸弹周围的六个格子都消掉，随机赋值颜色
+		;	然后将中间三个元素设置为炸弹，剩下两头随机赋值颜色
+		.IF @longestContLength >= 3
+			mov @findContCells, 1
+			.IF @longestContLength == 3
+				.IF @longestContLength == 0
+
+				.ELSEIF @longestContLength == 1
+				
+				.ELSEIF @longestContLength == 2
+
+				.ENDIF
+			.ELSEIF @longestContLength == 4
+				.IF @longestContLength == 0
+
+				.ELSEIF @longestContLength == 1
+				
+				.ELSEIF @longestContLength == 2
+
+				.ENDIF
+			.ELSEIF @longestContLength == 5
+				.IF @longestContLength == 0
+
+				.ELSEIF @longestContLength == 1
+				
+				.ELSEIF @longestContLength == 2
+
+				.ENDIF
+			.ENDIF
+		.ENDIF
+
+		add eax, 2	; 有效格子等价于下标为偶数
+	.ENDW
+	mov eax, @findContCells
+	ret
 InspectAndResolveContinuousCells ENDP
 
 
