@@ -84,7 +84,7 @@ CLICK_ENABLE BYTE 1	   ; 能否点击
 CELL STRUCT
     m_color    BYTE    ?    ;颜色
     m_type     BYTE    0    ;道具类型(0为普通格，1为炸弹)
-    m_frame    BYTE    0    ;帧动画
+    m_newColor BYTE    0    ;补充的新颜色（不为0时，表示需要消去并补充新的颜色）
 	m_scale    BYTE    0    ;占位，凑4字节
 CELL ENDS
 
@@ -1312,8 +1312,6 @@ PaintProc PROC,
 					div memnum2
 					add eax, @y
 					mov @chessy, eax
-
-
 
 
 					INVOKE GdipDrawImageRectI, graphics, @chessColor,
