@@ -477,6 +477,15 @@ InitializeBoard PROC uses eax ecx edx
 	ret
 InitializeBoard ENDP
 
+; 遍历整个棋盘，查看是否存在三/四/五连的连续同颜色元素（只处理一次，不递归处理！）
+; 若存在连续同颜色元素，把中间的赋为炸弹，剩下的全部随机赋值（为连续效果不避免重复，因而需要多次调用），且返回eax=1
+; 若整个棋盘都不存在连续同颜色元素了，返回eax=0
+; 注意：调用一次就需要绘制一次新棋盘，且要重复此过程直至确保不存在连续元素为止（即返回的eax为0）
+InspectAndResolveContinuousCells PROC
+	
+InspectAndResolveContinuousCells ENDP
+
+
 ;------------------获取目标地址
 Cal_address PROC src: DWORD,
 				 row: DWORD,
