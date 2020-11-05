@@ -556,6 +556,7 @@ InspectAndResolveContinuousCells PROC
 					mov esi, @currentContLength
 					mov @longestContLength, esi
 					mov @longestDirection, 0
+					mov @longestIndex, eax
 				.ENDIF
 				pop esi
 				.IF eax <= 152 - 16 && edx >= 2
@@ -578,6 +579,7 @@ InspectAndResolveContinuousCells PROC
 							mov esi, @currentContLength
 							mov @longestContLength, esi
 							mov @longestDirection, 0
+							mov @longestIndex, eax
 						.ENDIF
 						pop esi
 						.IF eax <= 152 - 24 && edx >= 3
@@ -600,6 +602,7 @@ InspectAndResolveContinuousCells PROC
 									mov esi, @currentContLength
 									mov @longestContLength, esi
 									mov @longestDirection, 0
+									mov @longestIndex, eax
 								.ENDIF
 								pop esi
 								.IF eax <= 152 - 32 && edx >= 4
@@ -622,6 +625,7 @@ InspectAndResolveContinuousCells PROC
 											mov esi, @currentContLength
 											mov @longestContLength, esi
 											mov @longestDirection, 0
+											mov @longestIndex, eax
 										.ENDIF
 										pop esi
 									.ENDIF
@@ -659,6 +663,7 @@ InspectAndResolveContinuousCells PROC
 					mov esi, @currentContLength
 					mov @longestContLength, esi
 					mov @longestDirection, 1
+					mov @longestIndex, eax
 				.ENDIF
 				pop esi
 				.IF eax <= 152 - 36
@@ -681,6 +686,7 @@ InspectAndResolveContinuousCells PROC
 							mov esi, @currentContLength
 							mov @longestContLength, esi
 							mov @longestDirection, 1
+							mov @longestIndex, eax
 						.ENDIF
 						pop esi
 						.IF eax <= 152 - 54
@@ -703,6 +709,7 @@ InspectAndResolveContinuousCells PROC
 									mov esi, @currentContLength
 									mov @longestContLength, esi
 									mov @longestDirection, 1
+									mov @longestIndex, eax
 								.ENDIF
 								pop esi
 								.IF eax <= 152 - 72
@@ -725,6 +732,7 @@ InspectAndResolveContinuousCells PROC
 											mov esi, @currentContLength
 											mov @longestContLength, esi
 											mov @longestDirection, 1
+											mov @longestIndex, eax
 										.ENDIF
 										pop esi
 									.ENDIF
@@ -762,6 +770,7 @@ InspectAndResolveContinuousCells PROC
 					mov esi, @currentContLength
 					mov @longestContLength, esi
 					mov @longestDirection, 2
+					mov @longestIndex, eax
 				.ENDIF
 				pop esi
 				.IF eax <= 152 - 20 && edx <= 6
@@ -784,6 +793,7 @@ InspectAndResolveContinuousCells PROC
 							mov esi, @currentContLength
 							mov @longestContLength, esi
 							mov @longestDirection, 2
+							mov @longestIndex, eax
 						.ENDIF
 						pop esi
 						.IF eax <= 152 - 30 && edx <= 5
@@ -806,6 +816,7 @@ InspectAndResolveContinuousCells PROC
 									mov esi, @currentContLength
 									mov @longestContLength, esi
 									mov @longestDirection, 2
+									mov @longestIndex, eax
 								.ENDIF
 								pop esi
 								.IF eax <= 152 - 40 && edx <= 4
@@ -828,6 +839,7 @@ InspectAndResolveContinuousCells PROC
 											mov esi, @currentContLength
 											mov @longestContLength, esi
 											mov @longestDirection, 2
+											mov @longestIndex, eax
 										.ENDIF
 										pop esi
 									.ENDIF
