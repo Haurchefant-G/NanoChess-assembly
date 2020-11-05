@@ -42,6 +42,8 @@ STARTBUTTON1_Y equ 360
 STARTBUTTON2_Y equ 460
 STARTBUTTON3_Y equ 560
 
+RETURN_WIDTH equ 80
+RETURN_HEIGHT equ 75
 
 CELL_WIDTH equ 84
 CELL_HEIGHT equ 76
@@ -140,6 +142,7 @@ $$Unicode startUI, jpg\startUI.jpg			; 选中框
 $$Unicode startButton1, png\startButton1.png		; 人机对战按钮
 $$Unicode startButton2, png\startButton2.png		; 发起对战按钮
 $$Unicode startButton3, png\startButton3.png		; 连接对战按钮
+$$Unicode returnButton, png\return.png
 $$Unicode chessBg, png\chessBg.png
 $$Unicode chessRed, png\chessRed.png			; type1
 $$Unicode chessPurple, png\chessPurple.png		; type2
@@ -155,6 +158,7 @@ hStartUI  DWORD 0
 hStartButton1  DWORD 0
 hStartButton2  DWORD 0
 hStartButton3  DWORD 0
+hReturnButton  DWORD 0
 hChessBg  DWORD 0
 hChessType1  DWORD 0
 hChessType2  DWORD 0
@@ -1080,6 +1084,10 @@ LButtonDownProc PROC,
 				
 		.ENDIF
 	.ELSEIF UI_STAGE == 1
+		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
+			mov UI_STAGE, 0
+			ret
+		.ENDIF
 		movzx eax, @mouseX
 		sub eax, CLICK_BOARD_X
 		mov edx, 0
@@ -1206,6 +1214,11 @@ PaintProc PROC,
 						STARTBUTTON_WIDTH, STARTBUTTON_HEIGHT
 
 	.ELSEIF UI_STAGE == 1
+
+		INVOKE GdipDrawImageRectI, graphics, hReturnButton,
+						WINDOW_WIDTH - RETURN_WIDTH,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
+						0,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+						RETURN_WIDTH, RETURN_HEIGHT
 
 		mov @i, 0
 		mov @y, BOARD_Y
@@ -1428,6 +1441,8 @@ InitLoadProc PROC,
 	INVOKE GdipLoadImageFromFile, OFFSET startButton1, ADDR hStartButton1
 	INVOKE GdipLoadImageFromFile, OFFSET startButton2, ADDR hStartButton2
 	INVOKE GdipLoadImageFromFile, OFFSET startButton3, ADDR hStartButton3
+
+	INVOKE GdipLoadImageFromFile, OFFSET returnButton, ADDR hReturnButton
 
 	INVOKE GdipLoadImageFromFile, OFFSET chessBg, ADDR hChessBg
 	INVOKE GdipLoadImageFromFile, OFFSET chessRed, ADDR hChessType1
