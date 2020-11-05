@@ -1802,7 +1802,7 @@ TimerUpdate PROC,
 		.ELSEIF GAME_STATUS == 4
 			; 消去的棋子缩小到消去
 			mov @i, 0
-			add eax, OFFSET chessboard
+			mov eax, OFFSET chessboard
 			mov @chessAddress1, eax
 
 			.WHILE @i < boardsize
@@ -1835,7 +1835,7 @@ TimerUpdate PROC,
 		.ELSEIF GAME_STATUS == 5
 			; 生成的新棋子放大填充
 			mov @i, 0
-			add eax, OFFSET chessboard
+			mov eax, OFFSET chessboard
 			mov @chessAddress1, eax
 
 			.WHILE @i < boardsize
