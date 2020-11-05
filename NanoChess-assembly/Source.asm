@@ -35,6 +35,13 @@ WINDOW_WIDTH equ 600
 WINDOW_HEIGHT equ 900
 WINDOW_TITLEBARHEIGHT equ 32
 
+STARTBUTTON_WIDTH equ 256
+STARTBUTTON_HEIGHT equ 70
+STARTBUTTON_X equ 172
+STARTBUTTON1_Y equ 360
+STARTBUTTON2_Y equ 460
+STARTBUTTON3_Y equ 560
+
 
 CELL_WIDTH equ 84
 CELL_HEIGHT equ 76
@@ -67,7 +74,7 @@ memnum2 DWORD 2
 mouseX WORD 0
 mouseY WORD 0
 
-UI_STAGE BYTE 1		   ; 游戏界面场景（0为初始菜单，1为游戏场景）
+UI_STAGE BYTE 0		   ; 游戏界面场景（0为初始菜单，1为游戏场景）
 GAME_STATUS BYTE 0	   ; 游戏状态 (0为普通状态, 1为交换缩小，2为交换放大，3为消去（包含炸弹特效），4为重新生成填充)
 CLICK_ENABLE BYTE 1	   ; 能否点击
 
@@ -125,7 +132,14 @@ $$Unicode MACRO name, string
 		DB 0, 0
 ENDM
 
+; jpg图片文件
+$$Unicode startUI, jpg\startUI.jpg			; 选中框
+
+
 ; png图片文件
+$$Unicode startButton1, png\startButton1.png		; 人机对战按钮
+$$Unicode startButton2, png\startButton2.png		; 发起对战按钮
+$$Unicode startButton3, png\startButton3.png		; 连接对战按钮
 $$Unicode chessBg, png\chessBg.png
 $$Unicode chessRed, png\chessRed.png			; type1
 $$Unicode chessPurple, png\chessPurple.png		; type2
@@ -133,10 +147,14 @@ $$Unicode chessGreen, png\chessGreen.png		; type3
 $$Unicode chessOrange, png\chessOrange.png		; type4
 $$Unicode chessYellow, png\chessYellow.png		; type5
 $$Unicode chessBlue, png\chessBlue.png			; type6
-$$Unicode chessSelected, png\chessSelected.png			; ѡ�б߿�
+$$Unicode chessSelected, png\chessSelected.png			; 选中框
 
 
 ; gdip加载图片资源指针
+hStartUI  DWORD 0
+hStartButton1  DWORD 0
+hStartButton2  DWORD 0
+hStartButton3  DWORD 0
 hChessBg  DWORD 0
 hChessType1  DWORD 0
 hChessType2  DWORD 0
@@ -782,7 +800,7 @@ WinMain PROC
 ; windows窗口程序入口函数
 ;--------------
 	; 播放音乐
-	invoke mciSendString, ADDR playSongCommand, NULL, 0, NULL;
+	; invoke mciSendString, ADDR playSongCommand, NULL, 0, NULL;
 
 
 	; 获得当前程序句柄
@@ -835,8 +853,6 @@ WinMain PROC
 	; Show and draw the window.
 	INVOKE ShowWindow, hMainWnd, SW_SHOW
 	INVOKE UpdateWindow, hMainWnd
-
-	INVOKE InitializeBoard
 
 
 ; Begin the program's message-handling loop.
@@ -1050,7 +1066,19 @@ LButtonDownProc PROC,
 	sar eax, 16
 	mov @mouseY, ax
 	.IF UI_STAGE == 0
+		movzx eax, @mouseX
+		.IF eax >= STARTBUTTON_X && eax <= STARTBUTTON_X + STARTBUTTON_WIDTH
+			movzx eax, @mouseY
+			.IF eax >= STARTBUTTON1_Y && eax <= STARTBUTTON1_Y + STARTBUTTON_HEIGHT
+				INVOKE InitializeBoard
+				mov UI_STAGE, 1
+			.ELSEIF eax >= STARTBUTTON2_Y && eax <= STARTBUTTON2_Y + STARTBUTTON_HEIGHT
 
+			.ELSEIF eax >= STARTBUTTON3_Y && eax <= STARTBUTTON3_Y + STARTBUTTON_HEIGHT
+
+			.ENDIF
+				
+		.ENDIF
 	.ELSEIF UI_STAGE == 1
 		movzx eax, @mouseX
 		sub eax, CLICK_BOARD_X
@@ -1162,6 +1190,20 @@ PaintProc PROC,
 	;INVOKE GdipDrawImageI, graphics, hChessBg, 200, 200
 
 	.IF UI_STAGE == 0
+		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
+
+		INVOKE GdipDrawImageRectI, graphics, hStartButton1,
+						STARTBUTTON_X,					
+						STARTBUTTON1_Y,					
+						STARTBUTTON_WIDTH, STARTBUTTON_HEIGHT
+		INVOKE GdipDrawImageRectI, graphics, hStartButton2,
+						STARTBUTTON_X,					
+						STARTBUTTON2_Y,					
+						STARTBUTTON_WIDTH, STARTBUTTON_HEIGHT
+		INVOKE GdipDrawImageRectI, graphics, hStartButton3,
+						STARTBUTTON_X,					
+						STARTBUTTON3_Y,					
+						STARTBUTTON_WIDTH, STARTBUTTON_HEIGHT
 
 	.ELSEIF UI_STAGE == 1
 
@@ -1380,6 +1422,13 @@ InitLoadProc PROC,
 	hWnd:DWORD, wParam:DWORD, lParam:DWORD
 ; 加载资源文件
 ;-----------------------------------------------------
+
+	INVOKE GdipLoadImageFromFile, OFFSET startUI, ADDR hStartUI
+
+	INVOKE GdipLoadImageFromFile, OFFSET startButton1, ADDR hStartButton1
+	INVOKE GdipLoadImageFromFile, OFFSET startButton2, ADDR hStartButton2
+	INVOKE GdipLoadImageFromFile, OFFSET startButton3, ADDR hStartButton3
+
 	INVOKE GdipLoadImageFromFile, OFFSET chessBg, ADDR hChessBg
 	INVOKE GdipLoadImageFromFile, OFFSET chessRed, ADDR hChessType1
 	INVOKE GdipLoadImageFromFile, OFFSET chessPurple, ADDR hChessType2
