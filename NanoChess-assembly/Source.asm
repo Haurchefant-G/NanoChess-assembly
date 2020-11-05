@@ -80,8 +80,11 @@ mouseX WORD 0
 mouseY WORD 0
 
 UI_STAGE BYTE 0		   ; 游戏界面场景（0为初始菜单，1为游戏场景, 2为连接输入界面）
-GAME_STATUS BYTE 0	   ; 游戏状态 (0为普通状态, 1为交换缩小，2为交换放大，3为消去（包含炸弹特效），4为重新生成填充)
+GAME_STATUS BYTE 0	   ; 游戏状态 (0为普通状态, 1为交换缩小，2为交换放大，3为判断, 4为消去（包含炸弹特效），5为重新生成填充)
 CLICK_ENABLE BYTE 1	   ; 能否点击
+
+
+GOOD_SWAP BYTE 0	; 交换是否可消去
 
 ; 棋格结构体
 CELL STRUCT
@@ -1673,7 +1676,9 @@ TimerUpdate PROC,
 
 	.ELSEIF UI_STAGE == 1
 		; 游戏场景
+
 		.IF GAME_STATUS == 1
+			; 交换缩小
 			mov eax, selectedChessOne
 			mov ebx, TYPE CELL
 			mul ebx
@@ -1720,6 +1725,7 @@ TimerUpdate PROC,
 				mov [ebx], eax
 			.ENDIF
 		.ELSEIF GAME_STATUS == 2
+			; 交换放大
 			mov eax, selectedChessOne
 			mov ebx, TYPE CELL
 			mul ebx
@@ -1761,15 +1767,100 @@ TimerUpdate PROC,
 				mov eax, @cell2
 				mov [ebx], eax
 			.ELSE
-				mov selectedChessOne, -1
-				mov GAME_STATUS, 0
-				mov CLICK_ENABLE, 1
+				.IF GOOD_SWAP == 1
+					; 前往判断是否存在三消
+					mov GAME_STATUS, 3
+				.ELSE
+					; 判断不存在三消将两个棋子又交换回去后，回到游戏场景（可以再次选择交换）
+					mov selectedChessOne, -1
+					mov GAME_STATUS, 0
+					mov CLICK_ENABLE, 1
+				.ENDIF
 			.ENDIF
 
 		.ELSEIF GAME_STATUS == 3
-
+			; 判断是否存在三消
+			INVOKE InspectAndResolveContinuousCells
+			.IF eax == 0
+				; 不存在三消
+				.IF GOOD_SWAP == 1
+					; 之前也没有触发三消，则将两棋子交换回去
+					mov GOOD_SWAP, 0
+					mov GAME_STATUS, 1
+				.ELSE
+					; 之前触发了三消，则直接回到游戏场景
+					mov selectedChessOne, -1
+					mov GAME_STATUS, 0
+				.ENDIF
+			.ELSE
+				; 存在三消，消去棋子并显示新棋子
+				mov GOOD_SWAP, 0
+				mov GAME_STATUS, 4
+			.ENDIF
 		.ELSEIF GAME_STATUS == 4
+			; 消去的棋子缩小到消去
+			mov @i, 0
+			add eax, OFFSET chessboard
+			mov @chessAddress1, eax
 
+			.WHILE @i < boardsize
+				mov eax, @chessAddress1
+				mov eax, [eax]
+				mov @cell1, eax
+
+				.IF @cell1.m_newColor != 0
+					.IF @cell1.m_scale == 1
+						mov al, @cell1.m_newColor
+						mov @cell1.m_color, al
+						mov ebx, @chessAddress1
+						mov eax, @cell1
+						mov [ebx], eax
+						mov GAME_STATUS, 5
+					.ELSE
+						movzx eax, @cell1.m_scale
+						mov edx, 0
+						div memnum2
+						mov @cell1.m_scale, al
+						mov ebx, @chessAddress1
+						mov eax, @cell1
+						mov [ebx], eax
+					.ENDIF
+				.ENDIF
+				add @i, 2
+				mov eax, 2 * TYPE CELL
+				add @chessAddress1, eax
+			.ENDW
+		.ELSEIF GAME_STATUS == 5
+			; 生成的新棋子放大填充
+			mov @i, 0
+			add eax, OFFSET chessboard
+			mov @chessAddress1, eax
+
+			.WHILE @i < boardsize
+				mov eax, @chessAddress1
+				mov eax, [eax]
+				mov @cell1, eax
+
+				.IF @cell1.m_newColor != 0
+					.IF @cell1.m_scale != 128
+						movzx eax, @cell1.m_scale
+						mul memnum2
+						mov @cell1.m_scale, al
+						mov ebx, @chessAddress1
+						mov eax, @cell1
+						mov [ebx], eax
+					.ELSE
+						mov @cell1.m_newColor, 0
+						mov ebx, @chessAddress1
+						mov eax, @cell1
+						mov [ebx], eax
+						mov GAME_STATUS, 3
+					.ENDIF
+				.ENDIF
+				add @i, 2
+				mov eax, 2 * TYPE CELL
+				add @chessAddress1, eax
+			.ENDW
 		.ENDIF
 
 	.ELSEIF UI_STAGE == 2
@@ -1923,6 +2014,7 @@ LButtonDownProc PROC,
 			.IF eax == -18 || eax == -10 || eax == -8 || eax == 8 || eax == 10 || eax == 18
 				mov eax, @selected
 				mov selectedChessTwo, eax
+				mov GOOD_SWAP, 1
 				mov GAME_STATUS, 1
 				mov CLICK_ENABLE, 0
 			.ELSE
@@ -2191,7 +2283,7 @@ PaintProc PROC,
 		.UNTIL @i == 17
 
 		.IF GAME_STATUS == 0
-		mov eax, selectedChessOne
+			mov eax, selectedChessOne
 			.IF eax != -1
 				mov edx, 0
 				mov ebx, 9
