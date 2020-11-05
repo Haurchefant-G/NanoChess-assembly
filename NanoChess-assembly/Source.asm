@@ -35,15 +35,18 @@ WINDOW_WIDTH equ 600
 WINDOW_HEIGHT equ 900
 WINDOW_TITLEBARHEIGHT equ 32
 
-STARTBUTTON_WIDTH equ 256
-STARTBUTTON_HEIGHT equ 70
-STARTBUTTON_X equ 172
-STARTBUTTON1_Y equ 360
-STARTBUTTON2_Y equ 460
-STARTBUTTON3_Y equ 560
+BUTTON_WIDTH equ 256
+BUTTON_HEIGHT equ 70
+BUTTON_X equ 172
+BUTTON_Y1 equ 360
+BUTTON_Y2 equ 460
+BUTTON_Y3 equ 560
 
 RETURN_WIDTH equ 80
 RETURN_HEIGHT equ 75
+
+DIALOG_X equ 100
+DIALOG_Y equ 130
 
 CELL_WIDTH equ 84
 CELL_HEIGHT equ 76
@@ -76,7 +79,7 @@ memnum2 DWORD 2
 mouseX WORD 0
 mouseY WORD 0
 
-UI_STAGE BYTE 0		   ; 游戏界面场景（0为初始菜单，1为游戏场景）
+UI_STAGE BYTE 0		   ; 游戏界面场景（0为初始菜单，1为游戏场景, 2为连接输入界面）
 GAME_STATUS BYTE 0	   ; 游戏状态 (0为普通状态, 1为交换缩小，2为交换放大，3为消去（包含炸弹特效），4为重新生成填充)
 CLICK_ENABLE BYTE 1	   ; 能否点击
 
@@ -142,7 +145,13 @@ $$Unicode startUI, jpg\startUI.jpg			; 选中框
 $$Unicode startButton1, png\startButton1.png		; 人机对战按钮
 $$Unicode startButton2, png\startButton2.png		; 发起对战按钮
 $$Unicode startButton3, png\startButton3.png		; 连接对战按钮
-$$Unicode returnButton, png\return.png
+$$Unicode returnButton, png\return.png				; 返回主界面
+$$Unicode connectButton, png\connect.png			; 连接
+
+$$Unicode inputDialog, png\inputIP.png		; 输入IP对话框
+$$Unicode winDialog, png\win.png			; 游戏胜利
+$$Unicode loseDialog, png\lose.png			; 游戏失败
+
 $$Unicode chessBg, png\chessBg.png
 $$Unicode chessRed, png\chessRed.png			; type1
 $$Unicode chessPurple, png\chessPurple.png		; type2
@@ -159,6 +168,11 @@ hStartButton1  DWORD 0
 hStartButton2  DWORD 0
 hStartButton3  DWORD 0
 hReturnButton  DWORD 0
+hConnectButton  DWORD 0
+hInputDialog  DWORD 0
+hWinDialog  DWORD 0
+hLoseDialog  DWORD 0
+
 hChessBg  DWORD 0
 hChessType1  DWORD 0
 hChessType2  DWORD 0
@@ -870,6 +884,7 @@ Message_Loop:
 	.ENDIF
 
 	; Relay the message to the program's WinProc.
+	INVOKE TranslateMessage, ADDR msg
 	INVOKE DispatchMessage, ADDR msg
     jmp Message_Loop
 
@@ -994,6 +1009,9 @@ TimerUpdate PROC,
 
 		.ENDIF
 
+	.ELSEIF UI_STAGE == 2
+		
+
 	.ENDIF
 
 	;mov @chessAddress, OFFSET chessboard
@@ -1040,6 +1058,10 @@ WinProc PROC uses ebx edi esi,
 		.IF CLICK_ENABLE == 1
 			INVOKE LButtonDownProc, hWnd, wParam, lParam
 		.ENDIF
+	.ELSEIF eax == WM_CHAR
+		.IF UI_STAGE == 2
+
+		.ENDIF
 
 	.ELSEIF eax == WM_TIMER
 		INVOKE TimerUpdate, hWnd
@@ -1071,14 +1093,14 @@ LButtonDownProc PROC,
 	mov @mouseY, ax
 	.IF UI_STAGE == 0
 		movzx eax, @mouseX
-		.IF eax >= STARTBUTTON_X && eax <= STARTBUTTON_X + STARTBUTTON_WIDTH
+		.IF @mouseX >= BUTTON_X && @mouseX <= BUTTON_X + BUTTON_WIDTH
 			movzx eax, @mouseY
-			.IF eax >= STARTBUTTON1_Y && eax <= STARTBUTTON1_Y + STARTBUTTON_HEIGHT
+			.IF eax >= BUTTON_Y1 && eax <= BUTTON_Y1 + BUTTON_HEIGHT
 				INVOKE InitializeBoard
 				mov UI_STAGE, 1
-			.ELSEIF eax >= STARTBUTTON2_Y && eax <= STARTBUTTON2_Y + STARTBUTTON_HEIGHT
-
-			.ELSEIF eax >= STARTBUTTON3_Y && eax <= STARTBUTTON3_Y + STARTBUTTON_HEIGHT
+			.ELSEIF eax >= BUTTON_Y2 && eax <= BUTTON_Y2 + BUTTON_HEIGHT
+				mov UI_STAGE, 2
+			.ELSEIF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
 
 			.ENDIF
 				
@@ -1145,6 +1167,21 @@ LButtonDownProc PROC,
 				mov selectedChessOne, eax
 			.ENDIF
 		.ENDIF
+
+	.ELSEIF UI_STAGE == 2
+		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
+			mov UI_STAGE, 0
+			ret
+		.ENDIF
+
+		.IF @mouseX >= BUTTON_X && @mouseX <= BUTTON_X + BUTTON_WIDTH
+			movzx eax, @mouseY
+			.IF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
+				INVOKE InitializeBoard
+				mov UI_STAGE, 1
+			.ENDIF
+				
+		.ENDIF
 	.ENDIF
 
 	ret
@@ -1201,23 +1238,23 @@ PaintProc PROC,
 		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
 
 		INVOKE GdipDrawImageRectI, graphics, hStartButton1,
-						STARTBUTTON_X,					
-						STARTBUTTON1_Y,					
-						STARTBUTTON_WIDTH, STARTBUTTON_HEIGHT
+						BUTTON_X,					
+						BUTTON_Y1,					
+						BUTTON_WIDTH, BUTTON_HEIGHT
 		INVOKE GdipDrawImageRectI, graphics, hStartButton2,
-						STARTBUTTON_X,					
-						STARTBUTTON2_Y,					
-						STARTBUTTON_WIDTH, STARTBUTTON_HEIGHT
+						BUTTON_X,					
+						BUTTON_Y2,					
+						BUTTON_WIDTH, BUTTON_HEIGHT
 		INVOKE GdipDrawImageRectI, graphics, hStartButton3,
-						STARTBUTTON_X,					
-						STARTBUTTON3_Y,					
-						STARTBUTTON_WIDTH, STARTBUTTON_HEIGHT
+						BUTTON_X,					
+						BUTTON_Y3,					
+						BUTTON_WIDTH, BUTTON_HEIGHT
 
 	.ELSEIF UI_STAGE == 1
 
 		INVOKE GdipDrawImageRectI, graphics, hReturnButton,
-						WINDOW_WIDTH - RETURN_WIDTH,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
-						0,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+						WINDOW_WIDTH - RETURN_WIDTH,					
+						0,
 						RETURN_WIDTH, RETURN_HEIGHT
 
 		mov @i, 0
@@ -1416,6 +1453,20 @@ PaintProc PROC,
 			.ENDIF
 		.ENDIF
 
+	.ELSEIF UI_STAGE == 2
+		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
+		INVOKE GdipDrawImageRectI, graphics, hReturnButton,
+				WINDOW_WIDTH - RETURN_WIDTH,					
+				0,
+				RETURN_WIDTH, RETURN_HEIGHT
+		INVOKE GdipDrawImageRectI, graphics, hConnectButton,
+				BUTTON_X,					
+				BUTTON_Y3,					
+				BUTTON_WIDTH, BUTTON_HEIGHT
+		INVOKE GdipDrawImageI, graphics, hInputDialog,
+				DIALOG_X,					
+				DIALOG_Y
+
 	.ENDIF
 
 	INVOKE BitBlt, hDC ,0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, @hdcMemBuffer, 0, 0, SRCCOPY
@@ -1441,6 +1492,11 @@ InitLoadProc PROC,
 	INVOKE GdipLoadImageFromFile, OFFSET startButton3, ADDR hStartButton3
 
 	INVOKE GdipLoadImageFromFile, OFFSET returnButton, ADDR hReturnButton
+	INVOKE GdipLoadImageFromFile, OFFSET connectButton, ADDR hConnectButton
+
+	INVOKE GdipLoadImageFromFile, OFFSET inputDialog, ADDR hInputDialog
+	INVOKE GdipLoadImageFromFile, OFFSET winDialog, ADDR hWinDialog
+	INVOKE GdipLoadImageFromFile, OFFSET loseDialog, ADDR hLoseDialog
 
 	INVOKE GdipLoadImageFromFile, OFFSET chessBg, ADDR hChessBg
 	INVOKE GdipLoadImageFromFile, OFFSET chessRed, ADDR hChessType1
