@@ -1254,7 +1254,7 @@ InspectAndResolveContinuousCells PROC
 
 			.IF @longestDirection == 0
 				; 先沿着这个方向找有没有炸弹：有炸弹则立刻将其周围六格及其本身随机赋值
-				; 此时由于已知此方向有长度为3的连续元素，不必再判断边界
+				; 此时由于已知此方向有长度为@longestContLength的连续元素，不必再判断边界
 				mov ecx, 0
 				push eax
 				push ebx
@@ -1304,10 +1304,11 @@ InspectAndResolveContinuousCells PROC
 					mul ecx
 					add eax, OFFSET chessboard
 					inc eax		; 对齐到m_type
+					push eax
 					.IF @longestContLength == 3 && @currentContLength == 2
 						mov dl, 1
 						mov [eax], dl
-						dec eax			; 记录原来的m_color，便于绘图
+						dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
 						mov dl, [eax]
 						add eax, 2		; 将m_newColor赋为m_color
 						mov [eax], dl
@@ -1315,7 +1316,7 @@ InspectAndResolveContinuousCells PROC
 						.IF @currentContLength == 2 || @currentContLength == 3
 							mov dl, 1
 							mov [eax], dl
-							dec eax			; 记录原来的m_color，便于绘图
+							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
 							mov dl, [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
@@ -1324,12 +1325,13 @@ InspectAndResolveContinuousCells PROC
 						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
 							mov dl, 1
 							mov [eax], dl
-							dec eax			; 记录原来的m_color，便于绘图
+							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
 							mov dl, [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
 					.ENDIF
+					pop eax
 					inc eax		; 再对齐到m_newColor
 					
 					mov ecx, [eax]
@@ -1360,7 +1362,7 @@ InspectAndResolveContinuousCells PROC
 				pop eax
 			.ELSEIF @longestDirection == 1
 				; 先沿着这个方向找有没有炸弹：有炸弹则立刻将其周围六格及其本身随机赋值
-				; 此时由于已知此方向有长度为3的连续元素，不必再判断边界
+				; 此时由于已知此方向有长度为@longestContLength的连续元素，不必再判断边界
 				mov ecx, 0
 				push eax
 				push ebx
@@ -1409,10 +1411,11 @@ InspectAndResolveContinuousCells PROC
 					mul ecx
 					add eax, OFFSET chessboard
 					inc eax		; 对齐到m_type
+					push eax
 					.IF @longestContLength == 3 && @currentContLength == 2
 						mov dl, 1
 						mov [eax], dl
-						dec eax			; 记录原来的m_color，便于绘图
+						dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
 						mov dl, [eax]
 						add eax, 2		; 将m_newColor赋为m_color
 						mov [eax], dl
@@ -1420,7 +1423,7 @@ InspectAndResolveContinuousCells PROC
 						.IF @currentContLength == 2 || @currentContLength == 3
 							mov dl, 1
 							mov [eax], dl
-							dec eax			; 记录原来的m_color，便于绘图
+							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
 							mov dl, [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
@@ -1429,12 +1432,13 @@ InspectAndResolveContinuousCells PROC
 						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
 							mov dl, 1
 							mov [eax], dl
-							dec eax			; 记录原来的m_color，便于绘图
+							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
 							mov dl, [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
 					.ENDIF
+					pop eax
 					inc eax		; 再对齐到m_newColor
 
 					mov ecx, [eax]
@@ -1464,7 +1468,7 @@ InspectAndResolveContinuousCells PROC
 				pop eax
 			.ELSEIF @longestDirection == 2
 				; 先沿着这个方向找有没有炸弹：有炸弹则立刻将其周围六格及其本身随机赋值
-				; 此时由于已知此方向有长度为3的连续元素，不必再判断边界
+				; 此时由于已知此方向有长度为@longestContLength的连续元素，不必再判断边界
 				mov ecx, 0
 				push eax
 				push ebx
@@ -1514,10 +1518,11 @@ InspectAndResolveContinuousCells PROC
 					mul ecx
 					add eax, OFFSET chessboard
 					inc eax		; 对齐到m_type
+					push eax
 					.IF @longestContLength == 3 && @currentContLength == 2
 						mov dl, 1
 						mov [eax], dl
-						dec eax			; 记录原来的m_color，便于绘图
+						dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
 						mov dl, [eax]
 						add eax, 2		; 将m_newColor赋为m_color
 						mov [eax], dl
@@ -1525,7 +1530,7 @@ InspectAndResolveContinuousCells PROC
 						.IF @currentContLength == 2 || @currentContLength == 3
 							mov dl, 1
 							mov [eax], dl
-							dec eax			; 记录原来的m_color，便于绘图
+							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
 							mov dl, [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
@@ -1534,12 +1539,13 @@ InspectAndResolveContinuousCells PROC
 						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
 							mov dl, 1
 							mov [eax], dl
-							dec eax			; 记录原来的m_color，便于绘图
+							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
 							mov dl, [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
 					.ENDIF
+					pop eax
 					inc eax		; 再对齐到m_newColor
 					
 					mov ecx, [eax]
