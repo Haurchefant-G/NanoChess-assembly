@@ -2543,6 +2543,21 @@ PaintProc PROC,
 						@chessx,					; BOARD_X + EVEN_CELL_START + @j * ROW_CELL_SPACE,
 						@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
 						@chessw, @chessh
+					.IF GAME_STATUS == 4
+						.IF @cell.m_type == 100 || (@cell.m_type == 1 && @cell.m_newColor == 0)
+							INVOKE GdipDrawImageRectI, graphics, hChessBomb,
+							@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
+							@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+							@chessw, @chessh
+						.ENDIF
+					.ELSE
+						.IF @cell.m_type == 1
+							INVOKE GdipDrawImageRectI, graphics, hChessBomb,
+							@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
+							@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+							@chessw, @chessh
+						.ENDIF
+					.ENDIF
 					
 					add @x, ROW_CELL_SPACE
 					inc @j
