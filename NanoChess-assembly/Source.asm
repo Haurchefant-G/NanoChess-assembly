@@ -500,7 +500,7 @@ InitializeBoard ENDP
 ; 传入eax对应下标的位置且此处为炸弹，位于ebx行、edx列，随机打乱周围六格（非炸弹）的颜色，并递归触发炸弹
 ; 且要维护shuffleCount
 RandomShuffleByBomb PROC uses eax ebx ecx edx
-	; 首先将炸掉的炸弹的m_type赋为100
+	; 首先将炸掉的炸弹的m_type赋为100，并随机shuffle这个格子的颜色（如果未被shuffle过）
 	push eax
 	push ebx
 	push edx
@@ -510,6 +510,19 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 	inc eax
 	mov ecx, 100
 	mov [eax], ecx	; 对齐到m_type并置为100
+	inc eax
+
+	mov ecx, [eax]
+	.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+		push eax
+		inc shuffleCount
+		invoke nrandom, 6
+		mov edx, eax
+		inc edx
+		pop eax
+		mov [eax], dl	; 对齐到m_newColor并随机初始化
+	.ENDIF
+
 	pop edx
 	pop ebx
 	pop eax
