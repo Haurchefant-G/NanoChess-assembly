@@ -535,8 +535,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
-		push eax
 		sub eax, 10
+		push eax
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
@@ -571,6 +571,7 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop eax
 		.ENDIF
 
+		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		add eax, 2		; 对齐到m_newColor
@@ -594,8 +595,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
-		push eax
 		sub eax, 18
+		push eax
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
@@ -630,6 +631,7 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop eax
 		.ENDIF
 
+		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		add eax, 2		; 对齐到m_newColor
@@ -653,8 +655,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
-		push eax
 		sub eax, 8
+		push eax
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
@@ -689,6 +691,7 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop eax
 		.ENDIF
 
+		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		add eax, 2		; 对齐到m_newColor
@@ -712,8 +715,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
-		push eax
 		add eax, 10
+		push eax
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
@@ -748,6 +751,7 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop eax
 		.ENDIF
 
+		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		add eax, 2		; 对齐到m_newColor
@@ -771,8 +775,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
-		push eax
 		add eax, 18
+		push eax
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
@@ -807,6 +811,7 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop eax
 		.ENDIF
 
+		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		add eax, 2		; 对齐到m_newColor
@@ -830,8 +835,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
-		push eax
 		add eax, 8
+		push eax
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
@@ -866,6 +871,7 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop eax
 		.ENDIF
 
+		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		add eax, 2		; 对齐到m_newColor
