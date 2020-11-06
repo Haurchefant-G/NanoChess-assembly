@@ -535,12 +535,14 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
+		push eax
 		sub eax, 10
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
 		mov cl, byte ptr[eax]
+		pop eax
 		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
@@ -568,8 +570,10 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop ebx
 			pop eax
 		.ENDIF
-		inc eax
 
+		mul ecx
+		add eax, OFFSET chessboard
+		add eax, 2		; 对齐到m_newColor
 		mov cl, byte ptr[eax]
 		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
@@ -590,12 +594,14 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
+		push eax
 		sub eax, 18
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
 		mov cl, byte ptr[eax]
+		pop eax
 		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
@@ -623,8 +629,10 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop ebx
 			pop eax
 		.ENDIF
-		inc eax
 
+		mul ecx
+		add eax, OFFSET chessboard
+		add eax, 2		; 对齐到m_newColor
 		mov cl, byte ptr[eax]
 		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
@@ -645,12 +653,14 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
+		push eax
 		sub eax, 8
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
 		mov cl, byte ptr[eax]
+		pop eax
 		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
@@ -678,8 +688,10 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop ebx
 			pop eax
 		.ENDIF
-		inc eax
 
+		mul ecx
+		add eax, OFFSET chessboard
+		add eax, 2		; 对齐到m_newColor
 		mov cl, byte ptr[eax]
 		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
@@ -700,12 +712,14 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
+		push eax
 		add eax, 10
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
 		mov cl, byte ptr[eax]
+		pop eax
 		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
@@ -733,8 +747,10 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop ebx
 			pop eax
 		.ENDIF
-		inc eax
 
+		mul ecx
+		add eax, OFFSET chessboard
+		add eax, 2		; 对齐到m_newColor
 		mov cl, byte ptr[eax]
 		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
@@ -755,12 +771,14 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
+		push eax
 		add eax, 18
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
 		mov cl, byte ptr[eax]
+		pop eax
 		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
@@ -788,8 +806,10 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop ebx
 			pop eax
 		.ENDIF
-		inc eax
 
+		mul ecx
+		add eax, OFFSET chessboard
+		add eax, 2		; 对齐到m_newColor
 		mov cl, byte ptr[eax]
 		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
@@ -810,12 +830,14 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		push eax
 		push ebx
 		push edx
+		push eax
 		add eax, 8
 		mov ecx, 4
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
 		mov cl, byte ptr[eax]
+		pop eax
 		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
@@ -843,8 +865,10 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 			pop ebx
 			pop eax
 		.ENDIF
-		inc eax
 
+		mul ecx
+		add eax, OFFSET chessboard
+		add eax, 2		; 对齐到m_newColor
 		mov cl, byte ptr[eax]
 		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
