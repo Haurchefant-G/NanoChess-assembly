@@ -193,7 +193,10 @@ LButtonDownProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 StartupInput		GdiplusStartupInput <1, NULL, FALSE, 0>
 
 ; 记录有哪些可用颜色，不可用的标为0
-possibleColor BYTE 1,2,3,4,5,6					
+possibleColor BYTE 1,2,3,4,5,6
+
+; 记录当前三消中被触发了几个炸弹，每轮更新（计分用）
+bombCount DWORD 0
 
 ;------------------------
 .code
@@ -495,7 +498,9 @@ InitializeBoard PROC uses eax ecx edx
 InitializeBoard ENDP
 
 ; 传入eax对应下标的位置且此处为炸弹，位于ebx行、edx列，随机打乱周围六格的颜色
+; 且要维护bombCount
 RandomShuffleByBomb PROC uses eax ebx ecx edx
+	inc bombCount
 	; 首先将炸掉的炸弹的m_type赋为100
 	push eax
 	push ebx
@@ -506,7 +511,6 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 	inc eax
 	mov ecx, 100
 	mov [eax], ecx	; 对齐到m_type并置为100
-	inc eax
 	pop edx
 	pop ebx
 	pop eax
@@ -522,8 +526,34 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, 0
-		mov [eax], ecx	; 对齐到m_type并置为0
+		mov ecx, [eax]
+		.IF ecx == 1
+			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
+			push eax
+			push ebx
+			push edx
+
+			push eax
+			mov edx, 0
+			mov ecx, 9
+			div ecx						; 获取当前是第几列并存在edx中
+			pop eax
+
+			push eax
+			push edx
+			mov edx, 0
+			mov ebx, 9
+			div ebx
+			mov ebx, eax				; 将当前行数存在ebx中
+			pop edx
+			pop eax
+
+			invoke RandomShuffleByBomb	; 连锁触发新的炸弹
+
+			pop edx
+			pop ebx
+			pop eax
+		.ENDIF
 		inc eax
 
 		push eax
@@ -547,8 +577,34 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, 0
-		mov [eax], ecx	; 对齐到m_type并置为0
+		mov ecx, [eax]
+		.IF ecx == 1
+			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
+			push eax
+			push ebx
+			push edx
+
+			push eax
+			mov edx, 0
+			mov ecx, 9
+			div ecx						; 获取当前是第几列并存在edx中
+			pop eax
+
+			push eax
+			push edx
+			mov edx, 0
+			mov ebx, 9
+			div ebx
+			mov ebx, eax				; 将当前行数存在ebx中
+			pop edx
+			pop eax
+
+			invoke RandomShuffleByBomb	; 连锁触发新的炸弹
+
+			pop edx
+			pop ebx
+			pop eax
+		.ENDIF
 		inc eax
 
 		push eax
@@ -572,8 +628,34 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, 0
-		mov [eax], ecx	; 对齐到m_type并置为0
+		mov ecx, [eax]
+		.IF ecx == 1
+			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
+			push eax
+			push ebx
+			push edx
+
+			push eax
+			mov edx, 0
+			mov ecx, 9
+			div ecx						; 获取当前是第几列并存在edx中
+			pop eax
+
+			push eax
+			push edx
+			mov edx, 0
+			mov ebx, 9
+			div ebx
+			mov ebx, eax				; 将当前行数存在ebx中
+			pop edx
+			pop eax
+
+			invoke RandomShuffleByBomb	; 连锁触发新的炸弹
+
+			pop edx
+			pop ebx
+			pop eax
+		.ENDIF
 		inc eax
 
 		push eax
@@ -597,8 +679,34 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, 0
-		mov [eax], ecx	; 对齐到m_type并置为0
+		mov ecx, [eax]
+		.IF ecx == 1
+			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
+			push eax
+			push ebx
+			push edx
+
+			push eax
+			mov edx, 0
+			mov ecx, 9
+			div ecx						; 获取当前是第几列并存在edx中
+			pop eax
+
+			push eax
+			push edx
+			mov edx, 0
+			mov ebx, 9
+			div ebx
+			mov ebx, eax				; 将当前行数存在ebx中
+			pop edx
+			pop eax
+
+			invoke RandomShuffleByBomb	; 连锁触发新的炸弹
+
+			pop edx
+			pop ebx
+			pop eax
+		.ENDIF
 		inc eax
 
 		push eax
@@ -622,8 +730,34 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, 0
-		mov [eax], ecx	; 对齐到m_type并置为0
+		mov ecx, [eax]
+		.IF ecx == 1
+			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
+			push eax
+			push ebx
+			push edx
+
+			push eax
+			mov edx, 0
+			mov ecx, 9
+			div ecx						; 获取当前是第几列并存在edx中
+			pop eax
+
+			push eax
+			push edx
+			mov edx, 0
+			mov ebx, 9
+			div ebx
+			mov ebx, eax				; 将当前行数存在ebx中
+			pop edx
+			pop eax
+
+			invoke RandomShuffleByBomb	; 连锁触发新的炸弹
+
+			pop edx
+			pop ebx
+			pop eax
+		.ENDIF
 		inc eax
 
 		push eax
@@ -647,8 +781,34 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, 0
-		mov [eax], ecx	; 对齐到m_type并置为0
+		mov ecx, [eax]
+		.IF ecx == 1
+			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
+			push eax
+			push ebx
+			push edx
+
+			push eax
+			mov edx, 0
+			mov ecx, 9
+			div ecx						; 获取当前是第几列并存在edx中
+			pop eax
+
+			push eax
+			push edx
+			mov edx, 0
+			mov ebx, 9
+			div ebx
+			mov ebx, eax				; 将当前行数存在ebx中
+			pop edx
+			pop eax
+
+			invoke RandomShuffleByBomb	; 连锁触发新的炸弹
+
+			pop edx
+			pop ebx
+			pop eax
+		.ENDIF
 		inc eax
 
 		push eax
@@ -666,7 +826,7 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 RandomShuffleByBomb ENDP
 
 ; 遍历整个棋盘，查看是否存在三/四/五连的连续同颜色元素（只处理一次，不递归处理！）
-; 若存在连续同颜色元素，把中间的赋为炸弹，剩下的全部随机赋值到m_newColor（为连续效果不避免重复，因而需要多次调用），且返回eax=1
+; 若存在连续同颜色元素，把中间的赋为炸弹，剩下的全部随机赋值到m_newColor（为连续效果不避免重复，因而需要多次调用），且返回eax近似于消掉元素的个数
 ; 若整个棋盘都不存在连续同颜色元素了，返回eax=0
 ; 注意：调用一次就需要绘制一次新棋盘，且要重复此过程直至确保不存在连续元素为止（即返回的eax为0）
 InspectAndResolveContinuousCells PROC	
@@ -1045,6 +1205,7 @@ InspectAndResolveContinuousCells PROC
 			pop edx
 			pop eax
 			mov @findContCells, 1
+			mov bombCount, 0
 
 			push eax
 			push edx
@@ -1324,7 +1485,10 @@ InspectAndResolveContinuousCells PROC
 		add eax, 2	; 有效格子等价于下标为偶数
 	.ENDW
 foundAndExit:
-	mov eax, @longestContLength	; todo: 添加记录被炸弹消掉的元素个数
+	mov eax, bombCount
+	mov ecx, 5					; 每触发一个炸弹，近似地多消掉5个元素，得5分
+	mul ecx
+	add eax, @longestContLength	; 消掉一个普通元素得1分
 	ret
 InspectAndResolveContinuousCells ENDP
 
