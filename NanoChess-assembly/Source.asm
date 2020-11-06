@@ -510,7 +510,7 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 	mul ecx
 	add eax, OFFSET chessboard
 	inc eax
-	mov ecx, 100
+	mov cl, 100
 	mov [eax], cl	; 对齐到m_type并置为100
 	inc eax
 
