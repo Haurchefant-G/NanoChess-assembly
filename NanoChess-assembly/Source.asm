@@ -84,6 +84,9 @@ GAME_STATUS BYTE 0	   ; 游戏状态 (0为普通状态, 1为交换缩小，2为�
 CLICK_ENABLE BYTE 1	   ; 能否点击
 REFRESH_PAINT BYTE 1   ; 是否刷新绘图
 
+GAME_MODE BYTE 0	   ; 游戏模式（0为与AI对战，1为与网络玩家对战）
+USER_TURN BYTE 0	   ; 谁的回合 (0为自己，1为对方)
+
 GOOD_SWAP BYTE 0	; 交换是否可消去
 
 ; 棋格结构体
@@ -2149,8 +2152,19 @@ TimerUpdate PROC,
 				.ELSE
 					; 之前触发了三消，则直接回到游戏场景
 					mov selectedChessOne, -1
-					mov GAME_STATUS, 0
-					mov CLICK_ENABLE, 1
+					.IF GAME_MODE == 0
+						.IF USER_TURN == 0
+							INVOKE AI
+							mov GAME_STATUS, 1
+							mov USER_TURN, 1
+						.ELSEIF USER_TURN == 1
+							mov GAME_STATUS, 0
+							mov CLICK_ENABLE, 1
+							mov USER_TURN, 0
+						.ENDIF
+					.ELSEIF GAME_MODE == 1
+
+					.ENDIF
 				.ENDIF
 			.ELSE
 				; 存在三消，消去棋子并显示新棋子
