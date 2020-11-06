@@ -496,6 +496,21 @@ InitializeBoard ENDP
 
 ; 传入eax对应下标的位置且此处为炸弹，位于ebx行、edx列，随机打乱周围六格的颜色
 RandomShuffleByBomb PROC uses eax ebx ecx edx
+	; 首先将炸掉的炸弹的m_type赋为100
+	push eax
+	push ebx
+	push edx
+	mov ecx, 4
+	mul ecx
+	add eax, OFFSET chessboard
+	inc eax
+	mov ecx, 100
+	mov [eax], ecx	; 对齐到m_type并置为100
+	inc eax
+	pop edx
+	pop ebx
+	pop eax
+
 	; 从左上开始顺时针随机赋值
 	.IF ebx >= 1 && edx >= 1
 		; 左上
@@ -1078,6 +1093,7 @@ InspectAndResolveContinuousCells PROC
 					
 				; 然后再执行这个方向上的随机初始化
 				mov ecx, 0
+				mov @currentContLength, 1	; 用来记录当前走到第几格了，从而确定炸弹安放位置
 				push eax
 				push ebx
 				push edx
@@ -1090,7 +1106,22 @@ InspectAndResolveContinuousCells PROC
 					mov ecx, 4
 					mul ecx
 					add eax, OFFSET chessboard
-					add eax, 2		; 对齐到m_newColor
+					inc eax		; 对齐到m_type
+					.IF @longestContLength == 3 && @currentContLength == 2
+						mov dl, 1
+						mov [eax], dl
+					.ELSEIF @longestContLength == 4
+						.IF @currentContLength == 2 || @currentContLength == 3
+							mov dl, 1
+							mov [eax], dl
+						.ENDIF
+					.ELSEIF @longestContLength == 5
+						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
+							mov dl, 1
+							mov [eax], dl
+						.ENDIF
+					.ENDIF
+					inc eax		; 再对齐到m_newColor
 					push eax
 					invoke nrandom, 6
 					mov edx, eax
@@ -1106,6 +1137,7 @@ InspectAndResolveContinuousCells PROC
 					dec edx
 
 					pop ecx
+					inc @currentContLength
 					inc ecx
 				.ENDW
 				pop edx
@@ -1148,6 +1180,7 @@ InspectAndResolveContinuousCells PROC
 					
 				; 然后再执行这个方向上的随机初始化
 				mov ecx, 0
+				mov @currentContLength, 1	; 用来记录当前走到第几格了，从而确定炸弹安放位置
 				push eax
 				push ebx
 				push edx
@@ -1160,7 +1193,22 @@ InspectAndResolveContinuousCells PROC
 					mov ecx, 4
 					mul ecx
 					add eax, OFFSET chessboard
-					add eax, 2		; 对齐到m_newColor
+					inc eax		; 对齐到m_type
+					.IF @longestContLength == 3 && @currentContLength == 2
+						mov dl, 1
+						mov [eax], dl
+					.ELSEIF @longestContLength == 4
+						.IF @currentContLength == 2 || @currentContLength == 3
+							mov dl, 1
+							mov [eax], dl
+						.ENDIF
+					.ELSEIF @longestContLength == 5
+						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
+							mov dl, 1
+							mov [eax], dl
+						.ENDIF
+					.ENDIF
+					inc eax		; 再对齐到m_newColor
 					push eax
 					invoke nrandom, 6
 					mov edx, eax
@@ -1175,6 +1223,7 @@ InspectAndResolveContinuousCells PROC
 					add ebx, 2
 
 					pop ecx
+					inc @currentContLength
 					inc ecx
 				.ENDW
 				pop edx
@@ -1218,6 +1267,7 @@ InspectAndResolveContinuousCells PROC
 					
 				; 然后再执行这个方向上的随机初始化
 				mov ecx, 0
+				mov @currentContLength, 1	; 用来记录当前走到第几格了，从而确定炸弹安放位置
 				push eax
 				push ebx
 				push edx
@@ -1230,7 +1280,22 @@ InspectAndResolveContinuousCells PROC
 					mov ecx, 4
 					mul ecx
 					add eax, OFFSET chessboard
-					add eax, 2		; 对齐到m_newColor
+					inc eax		; 对齐到m_type
+					.IF @longestContLength == 3 && @currentContLength == 2
+						mov dl, 1
+						mov [eax], dl
+					.ELSEIF @longestContLength == 4
+						.IF @currentContLength == 2 || @currentContLength == 3
+							mov dl, 1
+							mov [eax], dl
+						.ENDIF
+					.ELSEIF @longestContLength == 5
+						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
+							mov dl, 1
+							mov [eax], dl
+						.ENDIF
+					.ENDIF
+					inc eax		; 再对齐到m_newColor
 					push eax
 					invoke nrandom, 6
 					mov edx, eax
@@ -1246,13 +1311,14 @@ InspectAndResolveContinuousCells PROC
 					inc edx
 
 					pop ecx
+					inc @currentContLength
 					inc ecx
 				.ENDW
 				pop edx
 				pop ebx
 				pop eax
 			.ENDIF
-			jmp foundAndExit
+			jmp foundAndExit	; 每一轮只需要处理一个三消
 		.ENDIF
 
 		add eax, 2	; 有效格子等价于下标为偶数
