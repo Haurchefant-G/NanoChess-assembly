@@ -512,8 +512,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 	mov [eax], ecx	; 对齐到m_type并置为100
 	inc eax
 
-	mov ecx, [eax]
-	.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+	mov cl, byte ptr[eax]
+	.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 		push eax
 		inc shuffleCount
 		invoke nrandom, 6
@@ -568,8 +568,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		mov ecx, [eax]
-		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+		mov cl, byte ptr[eax]
+		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
 			inc shuffleCount
 			invoke nrandom, 6
@@ -623,8 +623,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		mov ecx, [eax]
-		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+		mov cl, byte ptr[eax]
+		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
 			inc shuffleCount
 			invoke nrandom, 6
@@ -678,8 +678,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		mov ecx, [eax]
-		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+		mov cl, byte ptr[eax]
+		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
 			inc shuffleCount
 			invoke nrandom, 6
@@ -733,8 +733,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		mov ecx, [eax]
-		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+		mov cl, byte ptr[eax]
+		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
 			inc shuffleCount
 			invoke nrandom, 6
@@ -788,8 +788,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		mov ecx, [eax]
-		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+		mov cl, byte ptr[eax]
+		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
 			inc shuffleCount
 			invoke nrandom, 6
@@ -843,8 +843,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		mov ecx, [eax]
-		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+		mov cl, byte ptr[eax]
+		.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 			push eax
 			inc shuffleCount
 			invoke nrandom, 6
@@ -1334,8 +1334,8 @@ InspectAndResolveContinuousCells PROC
 					pop eax
 					inc eax		; 再对齐到m_newColor
 					
-					mov ecx, [eax]
-					.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+					mov cl, byte ptr [eax]
+					.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 						push eax
 						inc shuffleCount
 						invoke nrandom, 6
@@ -1441,8 +1441,8 @@ InspectAndResolveContinuousCells PROC
 					pop eax
 					inc eax		; 再对齐到m_newColor
 
-					mov ecx, [eax]
-					.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+					mov cl, byte ptr[eax]
+					.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 						push eax
 						inc shuffleCount
 						invoke nrandom, 6
@@ -1548,8 +1548,8 @@ InspectAndResolveContinuousCells PROC
 					pop eax
 					inc eax		; 再对齐到m_newColor
 					
-					mov ecx, [eax]
-					.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+					mov cl, byte ptr[eax]
+					.IF cl == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
 						push eax
 						inc shuffleCount
 						invoke nrandom, 6
