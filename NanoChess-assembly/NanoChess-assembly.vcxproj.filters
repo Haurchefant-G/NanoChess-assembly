@@ -23,11 +23,6 @@
     </MASM>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="resource.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
     <Image Include="png\chessBg.png">
       <Filter>Resource Files\PNG</Filter>
     </Image>

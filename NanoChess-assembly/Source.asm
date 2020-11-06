@@ -162,6 +162,7 @@ $$Unicode chessGreen, png\chessGreen.png		; type3
 $$Unicode chessOrange, png\chessOrange.png		; type4
 $$Unicode chessYellow, png\chessYellow.png		; type5
 $$Unicode chessBlue, png\chessBlue.png			; type6
+$$Unicode chessBomb, png\chessBomb.png			; 选中框
 $$Unicode chessSelected, png\chessSelected.png			; 选中框
 
 
@@ -183,6 +184,7 @@ hChessType3  DWORD 0
 hChessType4  DWORD 0
 hChessType5  DWORD 0
 hChessType6  DWORD 0
+hChessBomb  DWORD 0
 hChessSelected	DWORD 0
 
 ; proc声明
@@ -2140,6 +2142,9 @@ TimerUpdate PROC,
 					.IF @cell1.m_scale == 1
 						mov al, @cell1.m_newColor
 						mov @cell1.m_color, al
+						.IF @cell1.m_type == 100
+							mov @cell1.m_type, 0
+						.ENDIF
 						mov ebx, @chessAddress1
 						mov eax, @cell1
 						mov [ebx], eax
@@ -2599,6 +2604,21 @@ PaintProc PROC,
 						@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
 						@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
 						@chessw, @chessh
+					.IF GAME_STATUS == 4
+						.IF @cell.m_type == 100 || (@cell.m_type == 1 && @cell.m_newColor == 0)
+							INVOKE GdipDrawImageRectI, graphics, hChessBomb,
+							@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
+							@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+							@chessw, @chessh
+						.ENDIF
+					.ELSE
+						.IF @cell.m_type == 1
+							INVOKE GdipDrawImageRectI, graphics, hChessBomb,
+							@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
+							@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+							@chessw, @chessh
+						.ENDIF
+					.ENDIF
 					
 					add @x, ROW_CELL_SPACE
 					inc @j
@@ -2634,6 +2654,7 @@ PaintProc PROC,
 							CELL_WIDTH, CELL_HEIGHT
 
 			.ENDIF
+
 		.ENDIF
 
 	.ELSEIF UI_STAGE == 2
@@ -2688,6 +2709,7 @@ InitLoadProc PROC,
 	INVOKE GdipLoadImageFromFile, OFFSET chessOrange, ADDR hChessType4
 	INVOKE GdipLoadImageFromFile, OFFSET chessYellow, ADDR hChessType5
 	INVOKE GdipLoadImageFromFile, OFFSET chessBlue, ADDR hChessType6
+	INVOKE GdipLoadImageFromFile, OFFSET chessBomb, ADDR hChessBomb
 	INVOKE GdipLoadImageFromFile, OFFSET chessSelected, ADDR hChessSelected
 	ret
 InitLoadProc ENDP
