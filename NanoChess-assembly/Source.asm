@@ -2173,6 +2173,7 @@ TimerUpdate PROC,
 					.IF GAME_MODE == 0
 						.IF USER_TURN == 0
 							INVOKE AI
+							mov GOOD_SWAP, 1
 							mov GAME_STATUS, 1
 							mov USER_TURN, 1
 						.ELSEIF USER_TURN == 1
