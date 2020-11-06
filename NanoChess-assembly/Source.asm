@@ -195,8 +195,8 @@ StartupInput		GdiplusStartupInput <1, NULL, FALSE, 0>
 ; 记录有哪些可用颜色，不可用的标为0
 possibleColor BYTE 1,2,3,4,5,6
 
-; 记录当前三消中被触发了几个炸弹，每轮更新（计分用）
-bombCount DWORD 0
+; 记录这一轮三消中总计消掉了几个元素（打分用）
+shuffleCount DWORD 0
 
 ;------------------------
 .code
@@ -497,10 +497,9 @@ InitializeBoard PROC uses eax ecx edx
 	ret
 InitializeBoard ENDP
 
-; 传入eax对应下标的位置且此处为炸弹，位于ebx行、edx列，随机打乱周围六格的颜色
-; 且要维护bombCount
+; 传入eax对应下标的位置且此处为炸弹，位于ebx行、edx列，随机打乱周围六格（非炸弹）的颜色，并递归触发炸弹
+; 且要维护shuffleCount
 RandomShuffleByBomb PROC uses eax ebx ecx edx
-	inc bombCount
 	; 首先将炸掉的炸弹的m_type赋为100
 	push eax
 	push ebx
@@ -556,12 +555,16 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		push eax
-		invoke nrandom, 6
-		mov edx, eax
-		inc edx
-		pop eax
-		mov [eax], dl	; 对齐到m_newColor并随机初始化
+		mov ecx, [eax]
+		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+			push eax
+			inc shuffleCount
+			invoke nrandom, 6
+			mov edx, eax
+			inc edx
+			pop eax
+			mov [eax], dl	; 对齐到m_newColor并随机初始化
+		.ENDIF
 
 		pop edx
 		pop ebx
@@ -607,12 +610,16 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		push eax
-		invoke nrandom, 6
-		mov edx, eax
-		inc edx
-		pop eax
-		mov [eax], dl	; 对齐到m_newColor并随机初始化
+		mov ecx, [eax]
+		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+			push eax
+			inc shuffleCount
+			invoke nrandom, 6
+			mov edx, eax
+			inc edx
+			pop eax
+			mov [eax], dl	; 对齐到m_newColor并随机初始化
+		.ENDIF
 
 		pop edx
 		pop ebx
@@ -658,12 +665,16 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		push eax
-		invoke nrandom, 6
-		mov edx, eax
-		inc edx
-		pop eax
-		mov [eax], dl	; 对齐到m_newColor并随机初始化
+		mov ecx, [eax]
+		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+			push eax
+			inc shuffleCount
+			invoke nrandom, 6
+			mov edx, eax
+			inc edx
+			pop eax
+			mov [eax], dl	; 对齐到m_newColor并随机初始化
+		.ENDIF
 
 		pop edx
 		pop ebx
@@ -709,12 +720,16 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		push eax
-		invoke nrandom, 6
-		mov edx, eax
-		inc edx
-		pop eax
-		mov [eax], dl	; 对齐到m_newColor并随机初始化
+		mov ecx, [eax]
+		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+			push eax
+			inc shuffleCount
+			invoke nrandom, 6
+			mov edx, eax
+			inc edx
+			pop eax
+			mov [eax], dl	; 对齐到m_newColor并随机初始化
+		.ENDIF
 
 		pop edx
 		pop ebx
@@ -760,12 +775,16 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		push eax
-		invoke nrandom, 6
-		mov edx, eax
-		inc edx
-		pop eax
-		mov [eax], dl	; 对齐到m_newColor并随机初始化
+		mov ecx, [eax]
+		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+			push eax
+			inc shuffleCount
+			invoke nrandom, 6
+			mov edx, eax
+			inc edx
+			pop eax
+			mov [eax], dl	; 对齐到m_newColor并随机初始化
+		.ENDIF
 
 		pop edx
 		pop ebx
@@ -811,12 +830,16 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		.ENDIF
 		inc eax
 
-		push eax
-		invoke nrandom, 6
-		mov edx, eax
-		inc edx
-		pop eax
-		mov [eax], dl	; 对齐到m_newColor并随机初始化
+		mov ecx, [eax]
+		.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+			push eax
+			inc shuffleCount
+			invoke nrandom, 6
+			mov edx, eax
+			inc edx
+			pop eax
+			mov [eax], dl	; 对齐到m_newColor并随机初始化
+		.ENDIF
 
 		pop edx
 		pop ebx
@@ -826,7 +849,7 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 RandomShuffleByBomb ENDP
 
 ; 遍历整个棋盘，查看是否存在三/四/五连的连续同颜色元素（只处理一次，不递归处理！）
-; 若存在连续同颜色元素，把中间的赋为炸弹，剩下的全部随机赋值到m_newColor（为连续效果不避免重复，因而需要多次调用），且返回eax近似于消掉元素的个数
+; 若存在连续同颜色元素，把中间的赋为炸弹，剩下的全部随机赋值到m_newColor（为连续效果不避免重复，因而需要多次调用），且返回eax=shuffleCount，即消掉元素的准确个数
 ; 若整个棋盘都不存在连续同颜色元素了，返回eax=0
 ; 注意：调用一次就需要绘制一次新棋盘，且要重复此过程直至确保不存在连续元素为止（即返回的eax为0）
 InspectAndResolveContinuousCells PROC	
@@ -845,6 +868,7 @@ InspectAndResolveContinuousCells PROC
 	; @nextColor 只记录下一个Cell的颜色（之前的Cell颜色一定等于currentColor，否则已经跳出）
 	mov @findContCells, 0
 	mov @longestContLength, 1
+	mov shuffleCount, 0			; 每轮开始前重置计数器
 	mov eax, 0
 	.WHILE eax < 153
 		; 对于每一个格子，只检测左下、下、右下三个方向是否存在三个连续的相同元素
@@ -1205,7 +1229,6 @@ InspectAndResolveContinuousCells PROC
 			pop edx
 			pop eax
 			mov @findContCells, 1
-			mov bombCount, 0
 
 			push eax
 			push edx
@@ -1271,24 +1294,42 @@ InspectAndResolveContinuousCells PROC
 					.IF @longestContLength == 3 && @currentContLength == 2
 						mov dl, 1
 						mov [eax], dl
+						dec eax			; 记录原来的m_color，便于绘图
+						mov dl, [eax]
+						add eax, 2		; 将m_newColor赋为m_color
+						mov [eax], dl
 					.ELSEIF @longestContLength == 4
 						.IF @currentContLength == 2 || @currentContLength == 3
 							mov dl, 1
+							mov [eax], dl
+							dec eax			; 记录原来的m_color，便于绘图
+							mov dl, [eax]
+							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
 					.ELSEIF @longestContLength == 5
 						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
 							mov dl, 1
 							mov [eax], dl
+							dec eax			; 记录原来的m_color，便于绘图
+							mov dl, [eax]
+							add eax, 2		; 将m_newColor赋为m_color
+							mov [eax], dl
 						.ENDIF
 					.ENDIF
 					inc eax		; 再对齐到m_newColor
-					push eax
-					invoke nrandom, 6
-					mov edx, eax
-					inc edx
-					pop eax
-					mov [eax], dl	; 对齐到m_newColor并随机初始化
+					
+					mov ecx, [eax]
+					.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+						push eax
+						inc shuffleCount
+						invoke nrandom, 6
+						mov edx, eax
+						inc edx
+						pop eax
+						mov [eax], dl	; 对齐到m_newColor并随机初始化
+					.ENDIF
+					
 					pop edx
 					pop ebx
 					pop eax
@@ -1358,24 +1399,42 @@ InspectAndResolveContinuousCells PROC
 					.IF @longestContLength == 3 && @currentContLength == 2
 						mov dl, 1
 						mov [eax], dl
+						dec eax			; 记录原来的m_color，便于绘图
+						mov dl, [eax]
+						add eax, 2		; 将m_newColor赋为m_color
+						mov [eax], dl
 					.ELSEIF @longestContLength == 4
 						.IF @currentContLength == 2 || @currentContLength == 3
 							mov dl, 1
+							mov [eax], dl
+							dec eax			; 记录原来的m_color，便于绘图
+							mov dl, [eax]
+							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
 					.ELSEIF @longestContLength == 5
 						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
 							mov dl, 1
 							mov [eax], dl
+							dec eax			; 记录原来的m_color，便于绘图
+							mov dl, [eax]
+							add eax, 2		; 将m_newColor赋为m_color
+							mov [eax], dl
 						.ENDIF
 					.ENDIF
 					inc eax		; 再对齐到m_newColor
-					push eax
-					invoke nrandom, 6
-					mov edx, eax
-					inc edx
-					pop eax
-					mov [eax], dl	; 对齐到m_newColor并随机初始化
+
+					mov ecx, [eax]
+					.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+						push eax
+						inc shuffleCount
+						invoke nrandom, 6
+						mov edx, eax
+						inc edx
+						pop eax
+						mov [eax], dl	; 对齐到m_newColor并随机初始化
+					.ENDIF
+
 					pop edx
 					pop ebx
 					pop eax
@@ -1445,24 +1504,42 @@ InspectAndResolveContinuousCells PROC
 					.IF @longestContLength == 3 && @currentContLength == 2
 						mov dl, 1
 						mov [eax], dl
+						dec eax			; 记录原来的m_color，便于绘图
+						mov dl, [eax]
+						add eax, 2		; 将m_newColor赋为m_color
+						mov [eax], dl
 					.ELSEIF @longestContLength == 4
 						.IF @currentContLength == 2 || @currentContLength == 3
 							mov dl, 1
+							mov [eax], dl
+							dec eax			; 记录原来的m_color，便于绘图
+							mov dl, [eax]
+							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
 					.ELSEIF @longestContLength == 5
 						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
 							mov dl, 1
 							mov [eax], dl
+							dec eax			; 记录原来的m_color，便于绘图
+							mov dl, [eax]
+							add eax, 2		; 将m_newColor赋为m_color
+							mov [eax], dl
 						.ENDIF
 					.ENDIF
 					inc eax		; 再对齐到m_newColor
-					push eax
-					invoke nrandom, 6
-					mov edx, eax
-					inc edx
-					pop eax
-					mov [eax], dl	; 对齐到m_newColor并随机初始化
+					
+					mov ecx, [eax]
+					.IF ecx == 0		; 如果这个格子在这一轮内还没有被shuffle过(m_newColor=0)
+						push eax
+						inc shuffleCount
+						invoke nrandom, 6
+						mov edx, eax
+						inc edx
+						pop eax
+						mov [eax], dl	; 对齐到m_newColor并随机初始化
+					.ENDIF
+					
 					pop edx
 					pop ebx
 					pop eax
@@ -1485,10 +1562,7 @@ InspectAndResolveContinuousCells PROC
 		add eax, 2	; 有效格子等价于下标为偶数
 	.ENDW
 foundAndExit:
-	mov eax, bombCount
-	mov ecx, 5					; 每触发一个炸弹，近似地多消掉5个元素，得5分
-	mul ecx
-	add eax, @longestContLength	; 消掉一个普通元素得1分
+	mov eax, shuffleCount	; 返回这一轮shuffle的元素的个数
 	ret
 InspectAndResolveContinuousCells ENDP
 
