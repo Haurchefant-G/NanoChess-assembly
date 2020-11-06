@@ -2,7 +2,7 @@ TITLE Windows Application                   (WinApp.asm)
 .386
 .model flat,stdcall
 option casemap:none
-.stack 4096
+.stack 9192
 ; This program displays a resizable application window and
 ; several popup message boxes.
 ; Thanks to Tom Joyce for creating a prototype
@@ -82,7 +82,7 @@ mouseY WORD 0
 UI_STAGE BYTE 0		   ; 游戏界面场景（0为初始菜单，1为游戏场景, 2为连接输入界面）
 GAME_STATUS BYTE 0	   ; 游戏状态 (0为普通状态, 1为交换缩小，2为交换放大，3为判断, 4为消去（包含炸弹特效），5为重新生成填充)
 CLICK_ENABLE BYTE 1	   ; 能否点击
-
+REFRESH_PAINT BYTE 1   ; 是否刷新绘图
 
 GOOD_SWAP BYTE 0	; 交换是否可消去
 
@@ -2049,14 +2049,14 @@ TimerUpdate PROC,
 			mov @cell2, eax
 
 			.IF @cell1.m_scale == 1
-				mov al, @cell1.m_color
-				mov ah, @cell2.m_color
-				mov @cell1.m_color, ah
-				mov @cell2.m_color, al
-				mov ebx, @chessAddress1
+				;mov al, @cell1.m_color
+				;mov ah, @cell2.m_color
+				;mov @cell1.m_color, ah
+				;mov @cell2.m_color, al
+				mov ebx, @chessAddress2
 				mov eax, @cell1
 				mov [ebx], eax
-				mov ebx, @chessAddress2
+				mov ebx, @chessAddress1
 				mov eax, @cell2
 				mov [ebx], eax
 				
@@ -2258,12 +2258,12 @@ WinProc PROC uses ebx edi esi,
 
 	.IF eax == WM_PAINT
 		; 调用绘图过程
+		;.IF REFRESH_PAINT == 1
 		INVOKE PaintProc, hWnd, wParam, lParam
-		INVOKE SetTimer, hWnd, TIMER_GAMETIMER, TIMER_GAMETIMER_ELAPSE, NULL
-		
+		;.ENDIF
 	.ELSEIF eax == WM_CREATE
 		INVOKE InitLoadProc, hWnd, wParam, lParam
-
+		INVOKE SetTimer, hWnd, TIMER_GAMETIMER, TIMER_GAMETIMER_ELAPSE, NULL
 	.ELSEIF eax == WM_LBUTTONDOWN
 		; 点击可用
 		.IF CLICK_ENABLE == 1
@@ -2308,8 +2308,10 @@ LButtonDownProc PROC,
 			movzx eax, @mouseY
 			.IF eax >= BUTTON_Y1 && eax <= BUTTON_Y1 + BUTTON_HEIGHT
 				INVOKE InitializeBoard
+				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 1
 			.ELSEIF eax >= BUTTON_Y2 && eax <= BUTTON_Y2 + BUTTON_HEIGHT
+				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 2
 			.ELSEIF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
 
@@ -2365,6 +2367,7 @@ LButtonDownProc PROC,
 		.IF @selected == -1 || selectedChessOne == -1
 			mov eax, @selected
 			mov selectedChessOne, eax
+			mov REFRESH_PAINT, 1
 		.ELSE
 			mov eax, @selected
 			sub eax, selectedChessOne
@@ -2374,15 +2377,18 @@ LButtonDownProc PROC,
 				mov GOOD_SWAP, 1
 				mov GAME_STATUS, 1
 				mov CLICK_ENABLE, 0
+				mov REFRESH_PAINT, 1
 			.ELSE
 				mov eax, @selected
 				mov selectedChessOne, eax
+				mov REFRESH_PAINT, 1
 			.ENDIF
 		.ENDIF
 
 	.ELSEIF UI_STAGE == 2
 		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
 			mov UI_STAGE, 0
+			mov REFRESH_PAINT, 1
 			ret
 		.ENDIF
 
@@ -2391,6 +2397,7 @@ LButtonDownProc PROC,
 			.IF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
 				INVOKE InitializeBoard
 				mov UI_STAGE, 1
+				mov REFRESH_PAINT, 1
 			.ENDIF
 				
 		.ENDIF
@@ -2406,8 +2413,8 @@ PaintProc PROC,
 ;-----------------------------------------------------
 	local   @ps:PAINTSTRUCT
 	local   @blankBmp:HBITMAP
-	local   @hdcWindow:DWORD
-	local   @hdcLoadBmp:DWORD
+	;local   @hdcWindow:DWORD
+	;local   @hdcLoadBmp:DWORD
 	local   @hdcMemBuffer:DWORD
 	local	@stRect:RECT
 	local	@hFont
@@ -2461,6 +2468,7 @@ PaintProc PROC,
 						BUTTON_X,					
 						BUTTON_Y3,					
 						BUTTON_WIDTH, BUTTON_HEIGHT
+		mov REFRESH_PAINT, 0
 
 	.ELSEIF UI_STAGE == 1
 
@@ -2693,7 +2701,7 @@ PaintProc PROC,
 							CELL_WIDTH, CELL_HEIGHT
 
 			.ENDIF
-
+			mov REFRESH_PAINT, 0
 		.ENDIF
 
 	.ELSEIF UI_STAGE == 2
@@ -2709,14 +2717,15 @@ PaintProc PROC,
 		INVOKE GdipDrawImageI, graphics, hInputDialog,
 				DIALOG_X,					
 				DIALOG_Y
-
+		mov REFRESH_PAINT, 0
 	.ENDIF
 
 	INVOKE BitBlt, hDC ,0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, @hdcMemBuffer, 0, 0, SRCCOPY
-	;invoke DeleteObject,@hFont
+	invoke GdipDeleteGraphics, graphics
 	invoke DeleteDC, @hdcMemBuffer
+	invoke DeleteObject, @blankBmp
 	;invoke DeleteDC,@hdcLoadBmp
-	invoke  EndPaint,hWnd,addr @ps
+	invoke  EndPaint,hWnd, addr @ps
 	ret
 
 PaintProc ENDP
