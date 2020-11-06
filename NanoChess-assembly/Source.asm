@@ -1719,8 +1719,15 @@ Count PROC row: DWORD,
 	mov @target_row, eax
 	mov eax, col
 	mov @target_col, eax
-	mov @count, 0
+	mov @count, 1
 	mov @bonus_count, 0
+	INVOKE Cal_address, edx, @target_row, @target_col
+	mov eax, [eax]
+	mov @chess, eax
+	.if @chess.m_type == 1
+		inc @bonus_count
+	.endif
+	
 	mov @flag, 1
 
 	.while @flag == 1
@@ -1794,10 +1801,11 @@ Count PROC row: DWORD,
 	.if @count >= 3
 		mov eax, 10
 		mul @count
+		.if @bonus_count > 0
+			add eax, 300
+		.endif
 	.endif
-	.if @bonus_count > 0
-		add eax, 300
-	.endif
+
 	
 	pop edx
 	pop ebx
@@ -1906,10 +1914,20 @@ AI PROC
 					add @score, eax
 					mov ebx, @score
 					.if ebx > @max_score
-						INVOKE Cal_address, 0, @row, @col
-						mov selectedChessOne, eax
-						INVOKE Cal_address, 0, @target_row, @target_col
-						mov selectedChessTwo, eax
+						mov selectedChessOne, 0
+						mov eax, @row
+						mul col_num
+						add selectedChessOne, eax
+						mov eax, @col
+						add selectedChessOne, eax
+						
+						mov selectedChessTwo, 0
+						mov eax, @target_row
+						mul col_num
+						add selectedChessTwo, eax
+						mov eax, @target_col
+						add selectedChessTwo, eax
+						
 						mov eax, @score
 						mov @max_score, eax
 					.endif
