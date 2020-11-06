@@ -1871,12 +1871,10 @@ AI PROC
 					add @score, eax
 					mov ebx, @score
 					.if ebx > @max_score
-						INVOKE Cal_address, edx, @row, @col
-						mov eax, [eax]
-						mov @chess_1, eax
-						INVOKE Cal_address, edx, @target_row, @target_col
-						mov eax, [eax]
-						mov @chess_2, eax
+						INVOKE Cal_address, 0, @row, @col
+						mov selectedChessOne, eax
+						INVOKE Cal_address, 0, @target_row, @target_col
+						mov selectedChessTwo, eax
 						mov eax, @score
 						mov @max_score, eax
 					.endif
