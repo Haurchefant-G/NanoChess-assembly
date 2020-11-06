@@ -509,7 +509,7 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 	add eax, OFFSET chessboard
 	inc eax
 	mov ecx, 100
-	mov [eax], ecx	; 对齐到m_type并置为100
+	mov [eax], cl	; 对齐到m_type并置为100
 	inc eax
 
 	mov cl, byte ptr[eax]
@@ -538,8 +538,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, [eax]
-		.IF ecx == 1
+		mov cl, byte ptr[eax]
+		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
 			push ebx
@@ -593,8 +593,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, [eax]
-		.IF ecx == 1
+		mov cl, byte ptr[eax]
+		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
 			push ebx
@@ -648,8 +648,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, [eax]
-		.IF ecx == 1
+		mov cl, byte ptr[eax]
+		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
 			push ebx
@@ -703,8 +703,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, [eax]
-		.IF ecx == 1
+		mov cl, byte ptr[eax]
+		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
 			push ebx
@@ -758,8 +758,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, [eax]
-		.IF ecx == 1
+		mov cl, byte ptr[eax]
+		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
 			push ebx
@@ -813,8 +813,8 @@ RandomShuffleByBomb PROC uses eax ebx ecx edx
 		mul ecx
 		add eax, OFFSET chessboard
 		inc eax
-		mov ecx, [eax]
-		.IF ecx == 1
+		mov cl, byte ptr[eax]
+		.IF cl == 1
 			; 如果被消掉的这个位置也是炸弹，同一轮内递归地连锁触发
 			push eax
 			push ebx
