@@ -1706,7 +1706,7 @@ InspectAndResolveContinuousCells ENDP
 parse_recv PROC uses esi eax ebp
 	LOCAL flag: DWORD
 	LOCAL count: DWORD
-	
+
 	; 获取信息头
 	mov esi, OFFSET result
 	mov eax, DWORD PTR [esi]
@@ -1721,8 +1721,21 @@ parse_recv PROC uses esi eax ebp
 		add esi, 4
 		mov eax, DWORD PTR [esi]
 		mov selectedChessTwo, eax
-		invoke crt_printf, addr info, selectedChessOne
-		invoke crt_printf, addr info, selectedChessTwo
+		add esi, 4
+		mov eax, DWORD PTR [esi]
+		mov damage, eax
+		add esi, 4
+
+		mov ebp, OFFSET chessboard
+		mov count, 0
+		.while count < 153			
+			mov eax, DWORD PTR [esi]
+			mov DWORD PTR [ebp], eax
+			
+			add ebp, 4
+			add esi, 4
+			inc count
+		.endw
 	.elseif flag == 2				; 棋盘信息
 		mov update_flag, 2
 
@@ -1768,6 +1781,20 @@ set_send PROC uses esi eax ebp
 		add esi, 4
 		mov eax, selectedChessTwo
 		mov DWORD PTR [esi], eax
+		add esi, 4
+		mov eax, damage
+		mov DWORD PTR [esi], eax
+		add esi, 4
+		
+		mov ebp, OFFSET chessboard
+		mov count, 0
+		.while count < 153
+			mov eax, DWORD PTR [ebp]
+			mov DWORD PTR [esi], eax
+			add ebp, 4
+			add esi, 4
+			inc count
+		.endw
 	.elseif send_flag == 2			; 发送棋盘信息
 		mov eax, damage
 		mov DWORD PTR [esi], eax
