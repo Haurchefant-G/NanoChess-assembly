@@ -2475,52 +2475,130 @@ TimerUpdate PROC,
 				mov UI_STAGE, 20
 				mov CLICK_ENABLE, 1
 			.ELSE
-				; 判断是否存在三消
-				INVOKE InspectAndResolveContinuousCells
-				.IF eax == 0
-					; 不存在三消
-					.IF GOOD_SWAP == 1
-						; 之前也没有触发三消，则将两棋子交换回去
-						mov GOOD_SWAP, 0
-						mov GAME_STATUS, 1
+				.IF GAME_MODE == 0
+					; 判断是否存在三消
+					INVOKE InspectAndResolveContinuousCells
+					.IF eax == 0
+						; 不存在三消
+						.IF GOOD_SWAP == 1
+							; 之前也没有触发三消，则将两棋子交换回去
+							mov GOOD_SWAP, 0
+							mov GAME_STATUS, 1
+						.ELSE
+							; 之前触发了三消，则直接回到游戏场景
+							mov selectedChessOne, -1
+							.IF GAME_MODE == 0
+								.IF USER_TURN == 0
+									INVOKE AI
+									mov GOOD_SWAP, 1
+									mov GAME_STATUS, 6
+									mov USER_TURN, 1
+								.ELSEIF USER_TURN == 1
+									mov GAME_STATUS, 0
+									mov CLICK_ENABLE, 1
+									mov USER_TURN, 0
+								.ENDIF
+							.ELSEIF GAME_MODE == 1
+								
+							.ENDIF
+						.ENDIF
 					.ELSE
-						; 之前触发了三消，则直接回到游戏场景
-						mov selectedChessOne, -1
-						.IF GAME_MODE == 0
-							.IF USER_TURN == 0
-								INVOKE AI
+						; 存在三消，消去棋子并显示新棋子
+						mov ebx, DAMAGE_PER_CHESS
+						mul ebx
+						mov damage, eax
+						.IF USER_TURN == 0
+							mov eax, USER2_SCORE
+							sub eax, damage
+							mov newScore, eax
+						.ELSEIF USER_TURN == 1
+							mov eax, USER1_SCORE
+							sub eax, damage
+							mov newScore, eax
+						.ENDIF
+						.IF newScore < 0 || newScore > INIT_SCORE
+							mov newScore, 0
+						.ENDIF
+						INVOKE IntToString, damage, ADDR DAMAGE_TEXT
+						mov GOOD_SWAP, 0
+						mov GAME_STATUS, 4
+					.ENDIF
+				.ELSEIF GAME_MODE == 1
+					.IF USER_TURN == 0
+						; 判断是否存在三消
+						INVOKE InspectAndResolveContinuousCells
+						.IF eax == 0
+							; 不存在三消
+							.IF GOOD_SWAP == 1
+								; 之前也没有触发三消，则将两棋子交换回去
+								mov GOOD_SWAP, 0
+								mov GAME_STATUS, 1
+							.ELSE
+								; 之前触发了三消，则告诉对方没有三消了，轮到对方下棋
+								mov selectedChessOne, -1
+								mov send_flag, 3
 								mov GOOD_SWAP, 1
-								mov GAME_STATUS, 6
+								mov GAME_STATUS, 7
 								mov USER_TURN, 1
+							.ENDIF
+						.ELSE
+							; 存在三消，消去棋子并显示新棋子
+							mov ebx, DAMAGE_PER_CHESS
+							mul ebx
+							mov damage, eax
+							.IF GOOD_SWAP == 1
+								mov send_flag, 1
+							.ELSEIF GOOD_SWAP == 0
+								mov send_flag, 2
+							.ENDIF
+							.IF USER_TURN == 0
+								mov eax, USER2_SCORE
+								sub eax, damage
+								mov newScore, eax
 							.ELSEIF USER_TURN == 1
+								mov eax, USER1_SCORE
+								sub eax, damage
+								mov newScore, eax
+							.ENDIF
+							.IF newScore < 0 || newScore > INIT_SCORE
+								mov newScore, 0
+							.ENDIF
+							INVOKE IntToString, damage, ADDR DAMAGE_TEXT
+							mov GOOD_SWAP, 0
+							mov GAME_STATUS, 4
+						.ENDIF
+					.ELSEIF USER_TURN == 1
+						.IF GOOD_SWAP == 1
+							mov eax, USER1_SCORE
+							sub eax, damage
+							mov newScore, eax
+							.IF newScore < 0 || newScore > INIT_SCORE
+								mov newScore, 0
+							.ENDIF
+							INVOKE IntToString, damage, ADDR DAMAGE_TEXT
+							mov GOOD_SWAP, 0
+							mov GAME_STATUS, 4
+						.ELSEIF
+							.IF update_flag == 2
+								mov update_flag, 0
+								mov eax, USER1_SCORE
+								sub eax, damage
+								mov newScore, eax
+								.IF newScore < 0 || newScore > INIT_SCORE
+									mov newScore, 0
+								.ENDIF
+								INVOKE IntToString, damage, ADDR DAMAGE_TEXT
+								mov GOOD_SWAP, 0
+								mov GAME_STATUS, 4
+							.ELSEIF update_flag == 3
+								mov update_flag, 0
+								mov selectedChessOne, -1
+								mov USER_TURN, 0
 								mov GAME_STATUS, 0
 								mov CLICK_ENABLE, 1
-								mov USER_TURN, 0
 							.ENDIF
-						.ELSEIF GAME_MODE == 1
-
 						.ENDIF
 					.ENDIF
-				.ELSE
-					; 存在三消，消去棋子并显示新棋子
-					mov ebx, DAMAGE_PER_CHESS
-					mul ebx
-					mov damage, eax
-					.IF USER_TURN == 0
-						mov eax, USER2_SCORE
-						sub eax, damage
-						mov newScore, eax
-					.ELSEIF USER_TURN == 1
-						mov eax, USER1_SCORE
-						sub eax, damage
-						mov newScore, eax
-					.ENDIF
-					.IF newScore < 0 || newScore > INIT_SCORE
-						mov newScore, 0
-					.ENDIF
-					INVOKE IntToString, damage, ADDR DAMAGE_TEXT
-					mov GOOD_SWAP, 0
-					mov GAME_STATUS, 4
 				.ENDIF
 			.ENDIF
 		.ELSEIF GAME_STATUS == 4
@@ -2624,10 +2702,17 @@ TimerUpdate PROC,
 				add @chessAddress1, eax
 			.ENDW
 		.ELSEIF GAME_STATUS == 6
+			; 对手交换棋子动画过程
 			add AIdelay, 1
 			.IF AIdelay == AI_DELAY_FRAME
 				mov AIdelay, 0
 				mov GAME_STATUS, 1
+			.ENDIF
+		.ELSEIF GAME_STATUS == 7
+			; 远程对战模式下等待对方交换棋子
+			.IF update_flag == 1
+				mov update_flag, 0
+				mov GAME_STATUS, 6
 			.ENDIF
 		.ENDIF
 
@@ -2644,18 +2729,18 @@ TimerUpdate PROC,
 		.IF connect_flag == 1
 			mov recv_flag, 1
 			mov connect_flag, 0
-
-			INVOKE InitializeBoard
+		.ELSEIF update_flag == 2
+			mov update_flag, 0
 			mov USER1_SCORE, INIT_SCORE
 			INVOKE IntToString, USER1_SCORE, ADDR USER1_SCORE_TEXT
 			mov USER2_SCORE, INIT_SCORE
 			INVOKE IntToString, USER2_SCORE, ADDR USER2_SCORE_TEXT
 			mov selectedChessOne, -1
 			mov GOOD_SWAP, 1
-			mov CLICK_ENABLE, 1
-			mov USER_TURN, 0
+			mov CLICK_ENABLE, 0
+			mov USER_TURN, 1
 			mov damage, 0
-			mov GAME_STATUS, 0
+			mov GAME_STATUS, 3
 		.ENDIF
 	.ENDIF
 
@@ -2764,13 +2849,16 @@ LButtonDownProc PROC,
 			movzx eax, @mouseY
 			.IF eax >= BUTTON_Y1 && eax <= BUTTON_Y1 + BUTTON_HEIGHT
 				INVOKE InitGameProc
+				mov GAME_MODE, 0
 				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 1
 			.ELSEIF eax >= BUTTON_Y2 && eax <= BUTTON_Y2 + BUTTON_HEIGHT
+				mov GAME_MODE, 1
 				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 2
 				INVOKE CreateThread, NULL, NULL, ADDR server_socket, NULL, 0, NULL
 			.ELSEIF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
+				mov GAME_MODE, 1
 				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 3
 			.ENDIF
