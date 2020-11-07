@@ -147,6 +147,17 @@ row_num DWORD 17
 col_num DWORD 9
 dir_num DWORD 6
 
+; socket相关
+server_ip DB "127.0.0.1", 0				;----------IP地址
+port DWORD 30086					;----------端口
+result DB 2048 DUP(0)					;----------接收信息结果
+BUFSIZE DWORD 1024					;----------读写大小
+sock DWORD ?						;----------socket
+client DWORD ?						;----------客户端socket，只在等待连接模式下使用
+recv_flag DWORD 0					;----------接收标识符, 0为静止，1为读取
+send_flag DWORD 0					;----------发送标识符, 0为静止，其余数值对应相应的信息头
+quit_flag DWORD 0					;----------终止标识符
+
 ; 播放音乐命令
 playSongCommand BYTE "play ./lemon.mp3", 0
 
@@ -1668,6 +1679,178 @@ foundAndExit:
 	ret
 InspectAndResolveContinuousCells ENDP
 
+; 解析收到的信息
+; 信息头有3种类型，1代表交换的棋子，2代表棋盘信息和分数，3代表终止符
+parse_recv PROC uses esi eax
+	LOCAL flag: DWORD
+	
+	; 获取信息头
+	mov esi, OFFSET result
+	mov eax, DWORD PTR [esi]
+	mov flag, eax
+	add esi, 4
+
+	.if flag == 1					; 交换棋子
+		mov eax, DWORD PTR [esi]
+		mov selectedChessOne, eax
+		add esi, 4
+		mov eax, DWORD PTR [esi]
+		mov selectedChessTwo, eax
+	.elseif flag == 2				; 棋盘信息
+	;-------------------处理接收到的棋盘信息（未完成)----------------------------
+	.elseif flag == 3				; 终止符
+		; 终止符意味着消息已经发完，将flag置为静止
+		mov recv_flag, 0
+	.endif
+
+	ret
+parse_recv ENDP
+
+; 设置发送的信息
+; 信息头定义见上文
+set_send PROC uses esi eax ebp
+	LOCAL count: DWORD
+
+	; 初始化result
+	; 设置信息头
+	mov esi, OFFSET result
+	mov eax, send_flag
+	mov DWORD PTR [esi], eax
+	add esi, 4
+
+	.if send_flag == 1				; 发送交换棋子
+		mov eax, selectedChessOne
+		mov DWORD PTR [esi], eax
+		add esi, 4
+		mov eax, selectedChessTwo
+		mov DWORD PTR [esi], eax
+	.elseif send_flag == 2			; 发送棋盘信息
+		;-------------------仍需添加分数（未完成)----------------------------
+		mov ebp, OFFSET chessboard
+		mov count, 0
+		.while count < 153
+			mov eax, DWORD PTR [ebp]
+			mov DWORD PTR [esi], eax
+			add ebp, 4
+			add esi, 4
+			inc count
+		.endw
+	.elseif send_flag == 3			; 发送终止符
+		mov recv_flag, 1
+	.endif
+
+	; 所有信息只发送一次，所以发完后就把flag置为静止
+	mov send_flag, 0
+	ret
+set_send ENDP
+
+server_socket PROC uses esi edi url: DWORD
+	LOCAL sock_data: WSADATA
+	LOCAL s_addr: sockaddr_in
+	LOCAL c_addr: sockaddr_in
+	LOCAL len: DWORD
+
+	mov len, SIZEOF s_addr
+
+	; 初始化
+	INVOKE WSAStartup, 22h, ADDR sock_data
+	.IF eax != 0
+		ret
+	.ENDIF
+
+	; 设置服务器ip和端口
+	lea esi, s_addr
+	mov WORD PTR [esi], AF_INET
+	INVOKE htons, port
+	mov WORD PTR [esi + 2], ax
+	INVOKE inet_addr, ADDR server_ip
+	mov DWORD PTR [esi + 4], eax
+
+	; 创建并连接socket
+	INVOKE socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
+	mov sock, eax
+	lea esi, s_addr
+	INVOKE bind, sock, ADDR s_addr, SIZEOF s_addr
+	INVOKE listen, sock, 10
+	INVOKE accept, sock, ADDR c_addr, ADDR len
+	mov client, eax
+
+	; 根据读取标识符在读取状态之间不断地切换
+	.while 1
+		.if recv_flag != 0
+			INVOKE recv, client, ADDR  result, BUFSIZE, 0		
+			INVOKE parse_recv
+			.continue
+		.endif
+
+		.if send_flag != 0
+			INVOKE set_send
+			INVOKE send, client, ADDR result, BUFSIZE, 0
+			.continue
+		.endif
+		
+		; 退出
+		.if quit_flag == 1
+			.break
+		.endif
+	.endw
+
+	; 清理
+	INVOKE closesocket, sock
+	INVOKE WSACleanup
+	ret
+server_socket ENDP
+
+client_socket PROC uses esi edi url: DWORD
+	LOCAL sock_data: WSADATA
+	LOCAL s_addr: sockaddr_in
+	LOCAL is_read: DWORD
+
+	; 初始化
+	INVOKE WSAStartup, 22h, ADDR sock_data
+	.IF eax != 0
+		ret
+	.ENDIF
+
+	; 设置服务器ip和端口
+	lea esi, s_addr
+	mov WORD PTR [esi], AF_INET
+	INVOKE htons, port
+	mov WORD PTR [esi + 2], ax
+	INVOKE inet_addr, ADDR server_ip
+	mov DWORD PTR [esi + 4], eax
+
+	; 创建并连接socket
+	INVOKE socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
+	mov sock, eax
+	lea esi, s_addr
+	INVOKE connect, sock, esi, SIZEOF sockaddr_in
+
+	; 根据读取标识符在读取状态之间不断地切换
+	.while 1
+		.if recv_flag != 0
+			INVOKE recv, sock, ADDR  result, BUFSIZE, 0		
+			INVOKE parse_recv
+			.continue
+		.endif
+
+		.if send_flag != 0
+			INVOKE set_send
+			INVOKE send, sock, ADDR result, BUFSIZE, 0
+			.continue
+		.endif
+		
+		; 退出
+		.if quit_flag == 1
+			.break
+		.endif
+	.endw
+	
+	; 清理
+	INVOKE closesocket, sock
+	INVOKE WSACleanup
+	ret
+client_socket ENDP
 
 ;------------------获取目标地址
 Cal_address PROC src: DWORD,
