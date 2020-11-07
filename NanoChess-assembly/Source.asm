@@ -1871,13 +1871,15 @@ server_socket PROC uses esi edi
 	add esi, 4
 	mov eax, DWORD PTR [esi]
 	mov ip, eax
+	INVOKE inet_ntoa, ip
+	mov local_ip, eax
 	
 	lea esi, s_addr
 	mov WORD PTR [esi], AF_INET
 	INVOKE htons, port
 	mov WORD PTR [esi + 2], ax
-;	INVOKE inet_addr, ADDR local_ip
-	mov DWORD PTR [esi + 4], ip
+	INVOKE inet_addr, ADDR local_ip
+	mov DWORD PTR [esi + 4], eax
 
 	; 创建并连接socket
 	INVOKE socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
