@@ -154,19 +154,23 @@ col_num DWORD 9
 dir_num DWORD 6
 
 ; socket相关
-local_ip DB 32 DUP(0)				;----------本地IP地址
-server_ip DB "127.0.0.1", 16 DUP(0)			;----------服务器IP地址
-dns_ip DB "8.8.8.8", 0					;----------dns IP
-port DWORD 30100					;----------端口
-result DB 2048 DUP(0)					;----------接收信息结果
-BUFSIZE DWORD 1024					;----------读写大小
-sock DWORD ?						;----------socket
-client DWORD ?						;----------客户端socket，只在等待连接模式下使用
-recv_flag DWORD 0					;----------接收标识符, 0为静止，1为读取
-update_flag DWORD 0					;----------更新标识符，数值对应信息头
-send_flag DWORD 0					;----------发送标识符, 0为静止，其余数值对应相应的信息头
-quit_flag DWORD 0					;----------终止标识符
-connect_flag DWORD 0					;----------连接标识符，0表示未连接，1表示未连接
+local_ip DB 32 DUP(0)								;----------本地IP地址
+server_ip DB "183.172.210.86", 16 DUP(0)			;----------服务器IP地址
+dns_ip DB "8.8.8.8", 0								;----------dns IP
+port DWORD 30100									;----------端口
+result DB 2048 DUP(0)								;----------接收信息结果
+BUFSIZE DWORD 1024									;----------读写大小
+sock DWORD ?										;----------socket
+client DWORD ?										;----------客户端socket，只在等待连接模式下使用
+recv_flag DWORD 0									;----------接收标识符, 0为静止，1为读取
+update_flag DWORD 0									;----------更新标识符，数值对应信息头
+send_flag DWORD 0									;----------发送标识符, 0为静止，其余数值对应相应的信息头
+quit_flag DWORD 0									;----------终止标识符
+connect_flag DWORD 0								;----------连接标识符，0表示未连接，1表示未连接
+s_addr sockaddr_in <>
+c_addr sockaddr_in <>
+ip_addr sockaddr_in <>
+
 
 ; 播放音乐命令
 playSongCommand BYTE "play ./lemon.mp3", 0
@@ -1841,9 +1845,6 @@ set_send ENDP
 
 server_socket PROC uses esi edi ebp
 	LOCAL sock_data: WSADATA
-	LOCAL s_addr: sockaddr_in
-	LOCAL c_addr: sockaddr_in
-	LOCAL ip_addr: sockaddr_in
 	LOCAL len: DWORD
 	LOCAL len_ip: DWORD
 	LOCAL ip: DWORD
@@ -1940,7 +1941,6 @@ server_socket ENDP
 
 client_socket PROC uses esi edi
 	LOCAL sock_data: WSADATA
-	LOCAL s_addr: sockaddr_in
 
 	; 初始化
 	mov recv_flag, 0					
@@ -2554,17 +2554,17 @@ TimerUpdate PROC,
 			.IF USER_TURN == 0 && USER2_SCORE == 0
 				mov UI_STAGE, 10
 				mov CLICK_ENABLE, 1
-				mov quit_flag, 1
-				mov connect_flag, 0
-				INVOKE closesocket, sock
-				INVOKE WSACleanup
+;				mov quit_flag, 1
+;				mov connect_flag, 0
+;				INVOKE closesocket, sock
+;				INVOKE WSACleanup
 			.ELSEIF USER_TURN == 1 && USER1_SCORE == 0
 				mov UI_STAGE, 20
 				mov CLICK_ENABLE, 1
-				mov quit_flag, 1
-				mov connect_flag, 0
-				INVOKE closesocket, sock
-				INVOKE WSACleanup
+;				mov quit_flag, 1
+;				mov connect_flag, 0
+;				INVOKE closesocket, sock
+;				INVOKE WSACleanup
 			.ELSE
 				.IF GAME_MODE == 0
 					; 判断是否存在三消
