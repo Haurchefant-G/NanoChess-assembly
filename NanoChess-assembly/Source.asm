@@ -10,8 +10,6 @@ option casemap:none
 ; Last update: 9/24/01
 
 include	 windows.inc
-include	 opengl32.inc
-includelib  opengl32.lib
 include	 gdi32.inc
 includelib  gdi32.lib
 include	 gdiplus.inc
@@ -60,26 +58,49 @@ ROW_CELL_SPACE_HALF equ 63
 EVEN_CELL_START equ 63
 ;chessBg equ BMP_CHESSBG
 
+AVATAR_WIDTH equ 96
+AVATAR_HEIGHT equ AVATAR_WIDTH
+SCORE_X_DELTA equ 14
+SCORE_Y_DELTA equ 33
+
+USER1_AVATAR_X equ 494
+USER1_AVATAR_Y equ 794
+USER1_SCORE_X equ USER1_AVATAR_X + SCORE_X_DELTA
+USER1_SCORE_Y equ USER1_AVATAR_Y + SCORE_Y_DELTA
+
+USER2_AVATAR_X equ 6
+USER2_AVATAR_Y equ 6
+USER2_SCORE_X equ USER2_AVATAR_X + SCORE_X_DELTA
+USER2_SCORE_Y equ USER2_AVATAR_Y + SCORE_Y_DELTA
+
 BOARD_X equ 6
-BOARD_Y equ 110
+BOARD_Y equ 105
 CLICK_BOARD_X equ BOARD_X + CELL_WIDTH / 8
 CLICK_BOARD_Y equ BOARD_Y
 CLICK_CELL_WIDTH equ CELL_WIDTH / 4 * 3
 CLICK_CELL_HEIGHT equ CELL_HEIGHT
 
+INIT_SCORE equ 10000
+
+DAMAGE_PER_CHESS equ 50
 
 TIMER_GAMETIMER equ 1			; 游戏的默认计时器ID
-TIMER_GAMETIMER_ELAPSE equ 10	; 默认计时器刷新间隔的毫秒数
+TIMER_GAMETIMER_ELAPSE equ 10	; 默认计时器刷新间隔的毫秒数y
+
+AI_DELAY_FRAME equ 20			; AI行动之前的动画延迟
+CURSOR_MOVE_START_X  equ 400	;
+CURSOR_MOVE_START_Y  equ 10		;
 
 ;==================== DATA =======================
 .data
 
+fontName db "script", 0
 memnum128 DWORD 128
 memnum2 DWORD 2
 mouseX WORD 0
 mouseY WORD 0
 
-UI_STAGE BYTE 0		   ; 游戏界面场景（0为初始菜单，1为游戏场景, 2为连接输入界面）
+UI_STAGE BYTE 0		   ; 游戏界面场景（0为初始菜单，1为游戏场景, 2为连接输入界面, 10为胜利, 20为失败）
 GAME_STATUS BYTE 0	   ; 游戏状态 (0为普通状态, 1为交换缩小，2为交换放大，3为判断, 4为消去（包含炸弹特效），5为重新生成填充)
 CLICK_ENABLE BYTE 1	   ; 能否点击
 REFRESH_PAINT BYTE 1   ; 是否刷新绘图
@@ -87,7 +108,23 @@ REFRESH_PAINT BYTE 1   ; 是否刷新绘图
 GAME_MODE BYTE 0	   ; 游戏模式（0为与AI对战，1为与网络玩家对战）
 USER_TURN BYTE 0	   ; 谁的回合 (0为自己，1为对方)
 
+USER1_SCORE DWORD 10000	   ; 我方分数
+USER2_SCORE DWORD 10000	   ; 敌方分数
+
+USER1_SCORE_TEXT db "xxxxx",0
+USER1_SCORE_TEXT_LEN db 5
+USER2_SCORE_TEXT db "xxxxx",0
+USER2_SCORE_TEXT_LEN db 5
+
 GOOD_SWAP BYTE 0	; 交换是否可消去
+
+AIdelay DWORD 0		; AI交换动画延迟计数
+
+damage DWORD 0		; 一次交换造成的伤害
+DAMAGE_TEXT_PREFIX db "-"
+DAMAGE_TEXT db "xxxxx", 0
+DAMAGE_TEXT_LEN db 5
+newScore DWORD 0		; 伤害造成后的新分数
 
 ; 棋格结构体
 CELL STRUCT
@@ -165,9 +202,13 @@ $$Unicode chessGreen, png\chessGreen.png		; type3
 $$Unicode chessOrange, png\chessOrange.png		; type4
 $$Unicode chessYellow, png\chessYellow.png		; type5
 $$Unicode chessBlue, png\chessBlue.png			; type6
-$$Unicode chessBomb, png\chessBomb.png			; 选中框
-$$Unicode chessSelected, png\chessSelected.png			; 选中框
+$$Unicode chessBomb, png\chessBomb.png			; 炸弹
+$$Unicode chessSelected, png\chessSelected.png			; 分数框
+$$Unicode avatar, png\avatar.png
+$$Unicode cursor, png\cursor.png
 
+
+hFont DWORD 0
 
 ; gdip加载图片资源指针
 hStartUI  DWORD 0
@@ -190,11 +231,18 @@ hChessType6  DWORD 0
 hChessBomb  DWORD 0
 hChessSelected	DWORD 0
 
+hAvatar	DWORD 0
+hCursor	DWORD 0
+
 ; proc声明
 InitLoadProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 PaintProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 InitializeBoard PROTO STDCALL
 LButtonDownProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
+IntToString PROTO STDCALL intdata:dword, strAddrees:dword
+InitGameProc PROTO STDCALL
+
+
 StartupInput		GdiplusStartupInput <1, NULL, FALSE, 0>
 
 ; 记录有哪些可用颜色，不可用的标为0
@@ -1959,6 +2007,24 @@ AI PROC
 	ret
 AI ENDP
 
+;-----------
+IntToString PROC uses eax ebx edx edi intdata:dword, strAddrees:dword
+; 5位数的整数(DWORD)转换成5字符字符串(DWORD)
+;--------------
+	mov eax, intdata
+	mov edi, strAddrees
+	add edi, 4
+	.while edi >= strAddrees
+		mov ebx, 10
+		mov edx, 0
+		div ebx
+		add edx, 48
+		mov [edi], dl
+		sub edi, 1
+	.endw
+	ret
+IntToString ENDP
+
 ;-----------------------
 WinMain PROC
 ; windows窗口程序入口函数
@@ -2019,7 +2085,7 @@ WinMain PROC
 	INVOKE UpdateWindow, hMainWnd
 
 
-; Begin the program's message-handling loop.
+	; Begin the program's message-handling loop.
 Message_Loop:
 	; Get next message from the queue.
 	INVOKE GetMessage, ADDR msg, NULL,NULL,NULL
@@ -2035,8 +2101,8 @@ Message_Loop:
     jmp Message_Loop
 
 Exit_Program:
-	  INVOKE ExitProcess,0
-	  ret
+	INVOKE ExitProcess,0
+	ret
 WinMain ENDP
 
 ;-------------------
@@ -2159,36 +2225,60 @@ TimerUpdate PROC,
 			.ENDIF
 
 		.ELSEIF GAME_STATUS == 3
-			; 判断是否存在三消
-			INVOKE InspectAndResolveContinuousCells
-			.IF eax == 0
-				; 不存在三消
-				.IF GOOD_SWAP == 1
-					; 之前也没有触发三消，则将两棋子交换回去
-					mov GOOD_SWAP, 0
-					mov GAME_STATUS, 1
-				.ELSE
-					; 之前触发了三消，则直接回到游戏场景
-					mov selectedChessOne, -1
-					.IF GAME_MODE == 0
-						.IF USER_TURN == 0
-							INVOKE AI
-							mov GOOD_SWAP, 1
-							mov GAME_STATUS, 1
-							mov USER_TURN, 1
-						.ELSEIF USER_TURN == 1
-							mov GAME_STATUS, 0
-							mov CLICK_ENABLE, 1
-							mov USER_TURN, 0
-						.ENDIF
-					.ELSEIF GAME_MODE == 1
-
-					.ENDIF
-				.ENDIF
+			.IF USER_TURN == 0 && USER2_SCORE == 0
+				mov UI_STAGE, 10
+				mov CLICK_ENABLE, 1
+			.ELSEIF USER_TURN == 1 && USER1_SCORE == 0
+				mov UI_STAGE, 20
+				mov CLICK_ENABLE, 1
 			.ELSE
-				; 存在三消，消去棋子并显示新棋子
-				mov GOOD_SWAP, 0
-				mov GAME_STATUS, 4
+				; 判断是否存在三消
+				INVOKE InspectAndResolveContinuousCells
+				.IF eax == 0
+					; 不存在三消
+					.IF GOOD_SWAP == 1
+						; 之前也没有触发三消，则将两棋子交换回去
+						mov GOOD_SWAP, 0
+						mov GAME_STATUS, 1
+					.ELSE
+						; 之前触发了三消，则直接回到游戏场景
+						mov selectedChessOne, -1
+						.IF GAME_MODE == 0
+							.IF USER_TURN == 0
+								INVOKE AI
+								mov GOOD_SWAP, 1
+								mov GAME_STATUS, 6
+								mov USER_TURN, 1
+							.ELSEIF USER_TURN == 1
+								mov GAME_STATUS, 0
+								mov CLICK_ENABLE, 1
+								mov USER_TURN, 0
+							.ENDIF
+						.ELSEIF GAME_MODE == 1
+
+						.ENDIF
+					.ENDIF
+				.ELSE
+					; 存在三消，消去棋子并显示新棋子
+					mov ebx, DAMAGE_PER_CHESS
+					mul ebx
+					mov damage, eax
+					.IF USER_TURN == 0
+						mov eax, USER2_SCORE
+						sub eax, damage
+						mov newScore, eax
+					.ELSEIF USER_TURN == 1
+						mov eax, USER1_SCORE
+						sub eax, damage
+						mov newScore, eax
+					.ENDIF
+					.IF newScore < 0
+						mov newScore, 0
+					.ENDIF
+					INVOKE IntToString, damage, ADDR DAMAGE_TEXT
+					mov GOOD_SWAP, 0
+					mov GAME_STATUS, 4
+				.ENDIF
 			.ENDIF
 		.ELSEIF GAME_STATUS == 4
 			; 消去的棋子缩小到消去
@@ -2226,6 +2316,39 @@ TimerUpdate PROC,
 				mov eax, 2 * TYPE CELL
 				add @chessAddress1, eax
 			.ENDW
+
+			.IF GAME_STATUS == 4
+				mov eax, damage
+				mov edx, 0
+				mov ebx, 6
+				div ebx
+				.IF USER_TURN == 0
+					sub USER2_SCORE, eax
+					.IF USER2_SCORE < 0
+						mov USER2_SCORE, 0
+					.ENDIF
+					INVOKE IntToString, USER2_SCORE, ADDR USER2_SCORE_TEXT
+				.ELSEIF USER_TURN == 1
+					sub USER1_SCORE, eax
+					.IF USER1_SCORE < 0
+						mov USER1_SCORE, 0
+					.ENDIF
+					INVOKE IntToString, USER1_SCORE, ADDR USER1_SCORE_TEXT
+				.ENDIF
+			.ELSEIF GAME_STATUS == 5
+				mov eax, newScore
+				.IF USER_TURN == 0
+					mov USER2_SCORE, eax
+					INVOKE IntToString, USER2_SCORE, ADDR USER2_SCORE_TEXT
+				.ELSEIF USER_TURN == 1
+					mov USER1_SCORE, eax
+					INVOKE IntToString, USER1_SCORE, ADDR USER1_SCORE_TEXT
+				.ENDIF
+				mov newScore, 0
+				mov damage, 0
+				INVOKE IntToString, damage, ADDR DAMAGE_TEXT
+			.ENDIF
+
 		.ELSEIF GAME_STATUS == 5
 			; 生成的新棋子放大填充
 			mov @i, 0
@@ -2257,6 +2380,12 @@ TimerUpdate PROC,
 				mov eax, 2 * TYPE CELL
 				add @chessAddress1, eax
 			.ENDW
+		.ELSEIF GAME_STATUS == 6
+			add AIdelay, 1
+			.IF AIdelay == AI_DELAY_FRAME
+				mov AIdelay, 0
+				mov GAME_STATUS, 1
+			.ENDIF
 		.ENDIF
 
 	.ELSEIF UI_STAGE == 2
@@ -2320,6 +2449,10 @@ WinProc PROC uses ebx edi esi,
 	  ;INVOKE MessageBox, hWnd, ADDR PopupText,
 	    ;ADDR PopupTitle, MB_OK
 	  ;jmp WinProcExit
+	.ELSEIF eax == WM_QUIT
+		INVOKE DeleteObject, hFont
+	.ELSEIF eax == WM_DESTROY
+        INVOKE PostQuitMessage, 0
 	.ELSE		; other message?
 	  INVOKE DefWindowProc, hWnd, localMsg, wParam, lParam
 	  jmp WinProcExit
@@ -2328,6 +2461,24 @@ WinProc PROC uses ebx edi esi,
 WinProcExit:
 	ret
 WinProc ENDP
+
+
+;-------------------------------------
+InitGameProc PROC
+; 初始化一局游戏
+;-------------------------------------
+	INVOKE InitializeBoard
+	mov USER1_SCORE, INIT_SCORE
+	INVOKE IntToString, USER1_SCORE, ADDR USER1_SCORE_TEXT
+	mov USER2_SCORE, INIT_SCORE
+	INVOKE IntToString, USER2_SCORE, ADDR USER2_SCORE_TEXT
+	mov selectedChessOne, -1
+	mov GOOD_SWAP, 1
+	mov CLICK_ENABLE, 1
+	mov USER_TURN, 0
+	mov damage, 0
+	mov GAME_STATUS, 0
+InitGameProc ENDP
 
 ;-----------------------------------------------------
 LButtonDownProc PROC,
@@ -2346,7 +2497,7 @@ LButtonDownProc PROC,
 		.IF @mouseX >= BUTTON_X && @mouseX <= BUTTON_X + BUTTON_WIDTH
 			movzx eax, @mouseY
 			.IF eax >= BUTTON_Y1 && eax <= BUTTON_Y1 + BUTTON_HEIGHT
-				INVOKE InitializeBoard
+				INVOKE InitGameProc
 				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 1
 			.ELSEIF eax >= BUTTON_Y2 && eax <= BUTTON_Y2 + BUTTON_HEIGHT
@@ -2440,6 +2591,12 @@ LButtonDownProc PROC,
 			.ENDIF
 				
 		.ENDIF
+	.ELSEIF UI_STAGE == 10 || UI_STAGE == 20
+		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
+			mov UI_STAGE, 0
+			mov REFRESH_PAINT, 1
+			ret
+		.ENDIF
 	.ENDIF
 
 	ret
@@ -2456,7 +2613,6 @@ PaintProc PROC,
 	;local   @hdcLoadBmp:DWORD
 	local   @hdcMemBuffer:DWORD
 	local	@stRect:RECT
-	local	@hFont
 	local	@cell:CELL
 	local	@i:DWORD
 	local	@j:DWORD
@@ -2741,7 +2897,77 @@ PaintProc PROC,
 
 			.ENDIF
 			mov REFRESH_PAINT, 0
+		.ELSEIF GAME_STATUS == 6
+			mov eax, selectedChessOne
+			.IF eax != -1
+				mov edx, 0
+				mov ebx, 9
+				div ebx
+				mov @j, eax
+				mov @i, edx
+				mov eax, @i
+				mov ebx, ROW_CELL_SPACE_HALF
+				mul ebx
+				add eax, BOARD_X
+				mov @x, eax
+				mov eax, @j
+				mov ebx, COLUMN_CELL_SPACE
+				mul ebx
+				add eax, BOARD_Y
+				mov @y, eax
+
+				add @x, 20
+				mov eax, @x
+				mul AIdelay
+				mov ecx, eax
+				mov ebx, AI_DELAY_FRAME
+				sub ebx, AIdelay
+				mov eax, CURSOR_MOVE_START_X
+				mul ebx
+				add ecx, eax
+				mov eax, ecx
+				mov edx, 0
+				mov ebx, AI_DELAY_FRAME
+				div ebx
+				mov @x, eax
+
+				sub @y, 100
+				mov eax, @y
+				mul AIdelay
+				mov ecx, eax
+				mov ebx, AI_DELAY_FRAME
+				sub ebx, AIdelay
+				mov eax, CURSOR_MOVE_START_Y
+				mul ebx
+				add ecx, eax
+				mov eax, ecx
+				mov edx, 0
+				mov ebx, AI_DELAY_FRAME
+				div ebx
+				mov @y, eax
+
+
+				INVOKE GdipDrawImageI, graphics, hCursor,
+							@x,					
+							@y			
+			.ENDIF
 		.ENDIF
+
+		INVOKE GdipDrawImageRectI, graphics, hAvatar,
+							USER1_AVATAR_X,
+							USER1_AVATAR_Y,
+							AVATAR_WIDTH, AVATAR_HEIGHT
+		INVOKE GdipDrawImageRectI, graphics, hAvatar,
+							USER2_AVATAR_X,
+							USER2_AVATAR_Y,
+							AVATAR_WIDTH, AVATAR_HEIGHT
+
+		; 绘制分数
+		INVOKE SelectObject, @hdcMemBuffer, hFont
+		INVOKE SetTextColor, @hdcMemBuffer, 0FFFFFFh ; 产生白色的画笔
+		INVOKE SetBkMode, @hdcMemBuffer, TRANSPARENT
+		INVOKE TextOut, @hdcMemBuffer, USER1_SCORE_X, USER1_SCORE_Y, ADDR USER1_SCORE_TEXT, USER1_SCORE_TEXT_LEN
+		INVOKE TextOut, @hdcMemBuffer, USER2_SCORE_X, USER2_SCORE_Y, ADDR USER2_SCORE_TEXT, USER2_SCORE_TEXT_LEN
 
 	.ELSEIF UI_STAGE == 2
 		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
@@ -2754,6 +2980,26 @@ PaintProc PROC,
 				BUTTON_Y3,					
 				BUTTON_WIDTH, BUTTON_HEIGHT
 		INVOKE GdipDrawImageI, graphics, hInputDialog,
+				DIALOG_X,					
+				DIALOG_Y
+		mov REFRESH_PAINT, 0
+	.ELSEIF UI_STAGE == 10
+		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
+		INVOKE GdipDrawImageRectI, graphics, hReturnButton,
+				WINDOW_WIDTH - RETURN_WIDTH,					
+				0,
+				RETURN_WIDTH, RETURN_HEIGHT
+		INVOKE GdipDrawImageI, graphics, hWinDialog,
+				DIALOG_X,					
+				DIALOG_Y
+		mov REFRESH_PAINT, 0
+	.ELSEIF UI_STAGE == 20
+		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
+		INVOKE GdipDrawImageRectI, graphics, hReturnButton,
+				WINDOW_WIDTH - RETURN_WIDTH,					
+				0,
+				RETURN_WIDTH, RETURN_HEIGHT
+		INVOKE GdipDrawImageI, graphics, hLoseDialog,
 				DIALOG_X,					
 				DIALOG_Y
 		mov REFRESH_PAINT, 0
@@ -2798,6 +3044,12 @@ InitLoadProc PROC,
 	INVOKE GdipLoadImageFromFile, OFFSET chessBlue, ADDR hChessType6
 	INVOKE GdipLoadImageFromFile, OFFSET chessBomb, ADDR hChessBomb
 	INVOKE GdipLoadImageFromFile, OFFSET chessSelected, ADDR hChessSelected
+
+	INVOKE GdipLoadImageFromFile, OFFSET avatar, ADDR hAvatar
+	INVOKE GdipLoadImageFromFile, OFFSET cursor, ADDR hCursor
+
+	INVOKE CreateFont, 30, 12, 0, 0, FW_BLACK, 0, 0, 0, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_CHARACTER_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH or FF_SWISS, addr fontName
+	mov	hFont,eax
 	ret
 InitLoadProc ENDP
 
