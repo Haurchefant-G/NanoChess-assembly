@@ -154,8 +154,8 @@ col_num DWORD 9
 dir_num DWORD 6
 
 ; socket相关
-local_ip DB "127.0.0.1", 0				;----------本地IP地址
-server_ip DB "127.0.0.1", 128 DUP(0)			;----------服务器IP地址
+local_ip DB 32 DUP(0)				;----------本地IP地址
+server_ip DB "127.0.0.1", 16 DUP(0)			;----------服务器IP地址
 dns_ip DB "8.8.8.8", 0					;----------dns IP
 port DWORD 30100					;----------端口
 result DB 2048 DUP(0)					;----------接收信息结果
@@ -1839,7 +1839,7 @@ set_send PROC uses esi eax ebp ecx ebx
 	ret
 set_send ENDP
 
-server_socket PROC uses esi edi
+server_socket PROC uses esi edi ebp
 	LOCAL sock_data: WSADATA
 	LOCAL s_addr: sockaddr_in
 	LOCAL c_addr: sockaddr_in
