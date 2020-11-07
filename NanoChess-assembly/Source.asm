@@ -1703,8 +1703,9 @@ InspectAndResolveContinuousCells ENDP
 
 ; 解析收到的信息
 ; 信息头有3种类型，1代表交换的棋子，2代表棋盘信息和分数，3代表终止符
-parse_recv PROC uses esi eax
+parse_recv PROC uses esi eax ebp
 	LOCAL flag: DWORD
+	LOCAL count: DWORD
 	
 	; 获取信息头
 	mov esi, OFFSET result
@@ -1725,7 +1726,20 @@ parse_recv PROC uses esi eax
 	.elseif flag == 2				; 棋盘信息
 		mov update_flag, 2
 
-	;-------------------处理接收到的棋盘信息（未完成)----------------------------
+		mov eax, DWORD PTR [esi]
+		mov damage, eax
+		add esi, 4
+
+		mov ebp, OFFSET chessboard
+		mov count, 0
+		.while count < 153			
+			mov eax, DWORD PTR [esi]
+			mov DWORD PTR [ebp], eax
+			
+			add ebp, 4
+			add esi, 4
+			inc count
+		.endw
 	.elseif flag == 3				; 终止符
 		mov update_flag, 3
 		
@@ -1755,7 +1769,10 @@ set_send PROC uses esi eax ebp
 		mov eax, selectedChessTwo
 		mov DWORD PTR [esi], eax
 	.elseif send_flag == 2			; 发送棋盘信息
-		;-------------------仍需添加分数（未完成)----------------------------
+		mov eax, damage
+		mov DWORD PTR [esi], eax
+		add esi, 4
+		
 		mov ebp, OFFSET chessboard
 		mov count, 0
 		.while count < 153
