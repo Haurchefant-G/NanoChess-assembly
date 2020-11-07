@@ -1845,10 +1845,13 @@ server_socket PROC uses esi edi
 	LOCAL sock_data: WSADATA
 	LOCAL s_addr: sockaddr_in
 	LOCAL c_addr: sockaddr_in
+	LOCAL ip_addr: sockaddr_in
 	LOCAL len: DWORD
-	LOCAL is_read: DWORD
+	LOCAL len_ip: DWORD
+	LOCAL ip: DWORD
 
 	mov len, SIZEOF s_addr
+	mov len_ip, SIZEOF ip_addr
 
 	; 初始化
 	mov recv_flag, 0					
@@ -1863,12 +1866,18 @@ server_socket PROC uses esi edi
 	.ENDIF
 
 	; 设置服务器ip和端口
+	INVOKE getsockname, sock, ADDR ip_addr, ADDR len_ip
+	lea esi, ip_addr
+	add esi, 4
+	mov eax, DWORD PTR [esi]
+	mov ip, eax
+	
 	lea esi, s_addr
 	mov WORD PTR [esi], AF_INET
 	INVOKE htons, port
 	mov WORD PTR [esi + 2], ax
-	INVOKE inet_addr, ADDR local_ip
-	mov DWORD PTR [esi + 4], eax
+;	INVOKE inet_addr, ADDR local_ip
+	mov DWORD PTR [esi + 4], ip
 
 	; 创建并连接socket
 	INVOKE socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
