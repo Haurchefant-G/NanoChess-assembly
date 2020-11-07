@@ -155,7 +155,8 @@ dir_num DWORD 6
 
 ; socket相关
 local_ip DB "127.0.0.1", 0				;----------本地IP地址
-server_ip DB "127.0.0.1", 128 DUP(0)	;----------服务器IP地址
+server_ip DB "127.0.0.1", 128 DUP(0)			;----------服务器IP地址
+dns_ip DB "8.8.8.8", 0					;----------dns IP
 port DWORD 30100					;----------端口
 result DB 2048 DUP(0)					;----------接收信息结果
 BUFSIZE DWORD 1024					;----------读写大小
@@ -1842,10 +1843,13 @@ server_socket PROC uses esi edi
 	LOCAL sock_data: WSADATA
 	LOCAL s_addr: sockaddr_in
 	LOCAL c_addr: sockaddr_in
+	LOCAL ip_addr: sockaddr_in
 	LOCAL len: DWORD
-	LOCAL is_read: DWORD
+	LOCAL len_ip: DWORD
+	LOCAL ip: DWORD
 
 	mov len, SIZEOF s_addr
+	mov len_ip, SIZEOF ip_addr
 
 	; 初始化
 	mov recv_flag, 0					
@@ -1860,6 +1864,36 @@ server_socket PROC uses esi edi
 	.ENDIF
 
 	; 设置服务器ip和端口
+	lea esi, ip_addr
+	mov WORD PTR [esi], AF_INET
+	INVOKE htons, 53
+	mov WORD PTR [esi + 2], ax
+	INVOKE inet_addr, ADDR dns_ip
+	mov DWORD PTR [esi + 4], eax
+
+	INVOKE socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
+	mov sock, eax
+	lea esi, ip_addr
+	INVOKE connect, sock, esi, SIZEOF sockaddr_in
+
+	INVOKE getsockname, sock, ADDR ip_addr, ADDR len_ip
+	lea esi, ip_addr
+	add esi, 4
+	mov eax, DWORD PTR [esi]
+	mov ip, eax
+	INVOKE inet_ntoa, ip
+	mov esi, eax
+	INVOKE Str_length, esi
+	mov ecx, eax
+	mov ebp, OFFSET local_ip
+	.while ecx > 0
+		mov al, BYTE PTR [esi]
+		mov BYTE PTR [ebp], al
+		inc esi
+		inc ebp
+		dec ecx
+	.endw
+	
 	lea esi, s_addr
 	mov WORD PTR [esi], AF_INET
 	INVOKE htons, port
