@@ -26,6 +26,8 @@ include masm32.inc
 includelib  masm32.lib
 include wsock32.inc
 includelib  wsock32.lib
+include msvcrt.inc
+includelib  msvcrt.lib
 
 .const
 Column equ 9
@@ -95,6 +97,8 @@ CURSOR_MOVE_START_Y  equ 10		;
 
 ;==================== DATA =======================
 .data
+
+output db "ebp:%d, esi:%d, count:%d\n", 0
 
 fontName db "script", 0
 memnum128 DWORD 128
@@ -1703,9 +1707,9 @@ InspectAndResolveContinuousCells ENDP
 
 ; 解析收到的信息
 ; 信息头有3种类型，1代表交换的棋子，2代表棋盘信息和分数，3代表终止符
-parse_recv PROC uses esi eax ebp
+parse_recv PROC uses esi eax ebp ecx
 	LOCAL flag: DWORD
-	LOCAL count: DWORD
+	LOCAL @count: DWORD
 
 	; 获取信息头
 	mov esi, OFFSET result
@@ -1725,17 +1729,18 @@ parse_recv PROC uses esi eax ebp
 		mov eax, DWORD PTR [esi]
 		mov damage, eax
 		add esi, 4
-
-		mov ebp, OFFSET chessboard
-		mov count, 0
-		.while count < 153			
-			mov eax, DWORD PTR [esi]
-			mov DWORD PTR [ebp], eax
-			
-			add ebp, 4
-			add esi, 4
-			inc count
-		.endw
+		;mov esi, OFFSET result
+		;add esi, 16
+		;mov ebp, OFFSET chessboard
+		;mov ecx, 0
+		;.while ecx < 153			
+			;mov eax, DWORD PTR [esi]
+			;mov DWORD PTR [ebp], eax
+			;
+			;add ebp, 4
+			;add esi, 4
+			;inc ecx
+		;.endw
 	.elseif flag == 2				; 棋盘信息
 		mov update_flag, 2
 
@@ -1744,14 +1749,14 @@ parse_recv PROC uses esi eax ebp
 		add esi, 4
 
 		mov ebp, OFFSET chessboard
-		mov count, 0
-		.while count < 153			
+		mov ecx, 0
+		.while ecx < 153			
 			mov eax, DWORD PTR [esi]
 			mov DWORD PTR [ebp], eax
 			
 			add ebp, 4
 			add esi, 4
-			inc count
+			inc ecx
 		.endw
 	.elseif flag == 3				; 终止符
 		mov update_flag, 3
@@ -1764,8 +1769,8 @@ parse_recv ENDP
 
 ; 设置发送的信息
 ; 信息头定义见上文
-set_send PROC uses esi eax ebp
-	LOCAL count: DWORD
+set_send PROC uses esi eax ebp ecx ebx
+	LOCAL @count: BYTE
 
 	; 初始化result
 	; 设置信息头
@@ -1786,27 +1791,46 @@ set_send PROC uses esi eax ebp
 		add esi, 4
 		
 		mov ebp, OFFSET chessboard
-		mov count, 0
-		.while count < 153
+		mov ecx, 0
+		.while ecx < 153
 			mov eax, DWORD PTR [ebp]
 			mov DWORD PTR [esi], eax
 			add ebp, 4
 			add esi, 4
-			inc count
+			inc ecx
 		.endw
+		; 本地已交换，给远端发送未交换前的
+		;mov esi, OFFSET result
+		;add esi, 16
+		;mov eax, selectedChessOne
+		;mov ebp, TYPE CELL
+		;mul ebp
+		;add eax, esi
+		;mov ecx, eax
+		;mov ebx, DWORD PTR [ecx]
+		;mov eax, selectedChessTwo
+		;mov ebp, TYPE CELL
+		;mul ebp
+		;add eax, esi
+		;mov esi , DWORD PTR [eax]
+		;mov DWORD PTR [ecx], esi
+		;mov DWORD PTR [eax], ebx
 	.elseif send_flag == 2			; 发送棋盘信息
 		mov eax, damage
 		mov DWORD PTR [esi], eax
 		add esi, 4
 		
 		mov ebp, OFFSET chessboard
-		mov count, 0
-		.while count < 153
+		mov ecx, 0
+		.while ecx < 153
+			;pushad
+			;INVOKE crt_printf, addr output, ebp, esi, ecx
+			;popad
 			mov eax, DWORD PTR [ebp]
 			mov DWORD PTR [esi], eax
 			add ebp, 4
 			add esi, 4
-			inc count
+			add ecx, 1
 		.endw
 	.elseif send_flag == 3			; 发送终止符
 		mov recv_flag, 1
@@ -2597,6 +2621,18 @@ TimerUpdate PROC,
 						.ENDIF
 					.ELSEIF USER_TURN == 1
 						.IF GOOD_SWAP == 1
+							mov edx, OFFSET result
+							add edx, 16
+							mov ebx, OFFSET chessboard
+							mov ecx, 0
+							.while ecx < 153			
+								mov eax, DWORD PTR [edx]
+								mov DWORD PTR [ebx], eax
+								
+								add ebx, 4
+								add edx, 4
+								inc ecx
+							.endw
 							mov eax, USER1_SCORE
 							sub eax, damage
 							mov newScore, eax
@@ -2730,7 +2766,7 @@ TimerUpdate PROC,
 				add @chessAddress1, eax
 			.ENDW
 
-			.IF GAME_MODE == 1 && USER_TURN == 1
+			.IF GAME_MODE == 1 && USER_TURN == 1 && GAME_STATUS == 3
 				mov recv_flag, 1
 			.ENDIF
 		.ELSEIF GAME_STATUS == 6
@@ -2744,6 +2780,7 @@ TimerUpdate PROC,
 			; 远程对战模式下等待对方交换棋子
 			.IF update_flag == 1
 				mov update_flag, 0
+				mov GOOD_SWAP, 1
 				mov GAME_STATUS, 6
 			.ENDIF
 		.ENDIF
@@ -2804,7 +2841,7 @@ TimerUpdate ENDP
 
 
 ;-----------------------------------------------------
-WinProc PROC uses ebx edi esi,
+WinProc PROC,
 	hWnd:DWORD, localMsg:DWORD, wParam:DWORD, lParam:DWORD
 ; windows窗口消息处理
 ;-----------------------------------------------------
