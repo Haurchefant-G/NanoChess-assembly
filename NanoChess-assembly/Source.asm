@@ -148,13 +148,15 @@ col_num DWORD 9
 dir_num DWORD 6
 
 ; socket相关
-server_ip DB "127.0.0.1", 0				;----------IP地址
+local_ip DB "127.0.0.1", 0				;----------本地IP地址
+server_ip DB 128 DUP(0)					;----------服务器IP地址
 port DWORD 30086					;----------端口
 result DB 2048 DUP(0)					;----------接收信息结果
 BUFSIZE DWORD 1024					;----------读写大小
 sock DWORD ?						;----------socket
 client DWORD ?						;----------客户端socket，只在等待连接模式下使用
 recv_flag DWORD 0					;----------接收标识符, 0为静止，1为读取
+update_flag DWORD 0					;----------更新标识符，数值对应信息头
 send_flag DWORD 0					;----------发送标识符, 0为静止，其余数值对应相应的信息头
 quit_flag DWORD 0					;----------终止标识符
 
@@ -1691,14 +1693,22 @@ parse_recv PROC uses esi eax
 	add esi, 4
 
 	.if flag == 1					; 交换棋子
+		mov update_flag, 1
+
 		mov eax, DWORD PTR [esi]
 		mov selectedChessOne, eax
 		add esi, 4
 		mov eax, DWORD PTR [esi]
 		mov selectedChessTwo, eax
+		invoke crt_printf, addr info, selectedChessOne
+		invoke crt_printf, addr info, selectedChessTwo
 	.elseif flag == 2				; 棋盘信息
+		mov update_flag, 2
+
 	;-------------------处理接收到的棋盘信息（未完成)----------------------------
 	.elseif flag == 3				; 终止符
+		mov update_flag, 3
+		
 		; 终止符意味着消息已经发完，将flag置为静止
 		mov recv_flag, 0
 	.endif
@@ -1744,11 +1754,13 @@ set_send PROC uses esi eax ebp
 	ret
 set_send ENDP
 
-server_socket PROC uses esi edi url: DWORD
+; 对应等待连接模式，想等于Pasv模式的服务器
+server_socket PROC uses esi edi
 	LOCAL sock_data: WSADATA
 	LOCAL s_addr: sockaddr_in
 	LOCAL c_addr: sockaddr_in
 	LOCAL len: DWORD
+	LOCAL is_read: DWORD
 
 	mov len, SIZEOF s_addr
 
@@ -1763,7 +1775,7 @@ server_socket PROC uses esi edi url: DWORD
 	mov WORD PTR [esi], AF_INET
 	INVOKE htons, port
 	mov WORD PTR [esi + 2], ax
-	INVOKE inet_addr, ADDR server_ip
+	INVOKE inet_addr, ADDR local_ip
 	mov DWORD PTR [esi + 4], eax
 
 	; 创建并连接socket
@@ -1801,10 +1813,10 @@ server_socket PROC uses esi edi url: DWORD
 	ret
 server_socket ENDP
 
-client_socket PROC uses esi edi url: DWORD
+; 对应主动连接模式，相当于客户端，需要输入目标ip地址
+client_socket PROC uses esi edi
 	LOCAL sock_data: WSADATA
 	LOCAL s_addr: sockaddr_in
-	LOCAL is_read: DWORD
 
 	; 初始化
 	INVOKE WSAStartup, 22h, ADDR sock_data
@@ -1829,7 +1841,7 @@ client_socket PROC uses esi edi url: DWORD
 	; 根据读取标识符在读取状态之间不断地切换
 	.while 1
 		.if recv_flag != 0
-			INVOKE recv, sock, ADDR  result, BUFSIZE, 0		
+			INVOKE recv, sock, ADDR  result, BUFSIZE, 0
 			INVOKE parse_recv
 			.continue
 		.endif
