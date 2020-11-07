@@ -2607,6 +2607,7 @@ TimerUpdate PROC,
 						.ELSEIF
 							.IF update_flag == 2
 								mov update_flag, 0
+								mov recv_flag, 1
 								mov eax, USER1_SCORE
 								sub eax, damage
 								mov newScore, eax
@@ -2738,6 +2739,7 @@ TimerUpdate PROC,
 			; 远程对战模式下等待对方交换棋子
 			.IF update_flag == 1
 				mov update_flag, 0
+				mov recv_flag, 1
 				mov GAME_STATUS, 6
 			.ENDIF
 		.ENDIF
@@ -2746,7 +2748,6 @@ TimerUpdate PROC,
 		; 等待远程玩家连接
 		.IF connect_flag == 1
 			INVOKE InitGameProc
-			mov updateflag, 2
 			mov send_flag, 1
 			mov connect_flag, 0
 		.ENDIF
@@ -2757,6 +2758,7 @@ TimerUpdate PROC,
 			mov connect_flag, 0
 		.ELSEIF update_flag == 2
 			mov update_flag, 0
+			mov recv_flag, 1
 			mov USER1_SCORE, INIT_SCORE
 			INVOKE IntToString, USER1_SCORE, ADDR USER1_SCORE_TEXT
 			mov USER2_SCORE, INIT_SCORE
