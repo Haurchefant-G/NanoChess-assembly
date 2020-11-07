@@ -161,6 +161,7 @@ recv_flag DWORD 0					;----------接收标识符, 0为静止，1为读取
 update_flag DWORD 0					;----------更新标识符，数值对应信息头
 send_flag DWORD 0					;----------发送标识符, 0为静止，其余数值对应相应的信息头
 quit_flag DWORD 0					;----------终止标识符
+connect_flag DWORD 0					;----------连接标识符，0表示未连接，1表示未连接
 
 ; 播放音乐命令
 playSongCommand BYTE "play ./lemon.mp3", 0
@@ -1719,8 +1720,8 @@ parse_recv PROC uses esi eax
 		add esi, 4
 		mov eax, DWORD PTR [esi]
 		mov selectedChessTwo, eax
-		; invoke crt_printf, addr info, selectedChessOne
-		; invoke crt_printf, addr info, selectedChessTwo
+		invoke crt_printf, addr info, selectedChessOne
+		invoke crt_printf, addr info, selectedChessTwo
 	.elseif flag == 2				; 棋盘信息
 		mov update_flag, 2
 
@@ -1773,7 +1774,6 @@ set_send PROC uses esi eax ebp
 	ret
 set_send ENDP
 
-; 对应等待连接模式，想等于Pasv模式的服务器
 server_socket PROC uses esi edi
 	LOCAL sock_data: WSADATA
 	LOCAL s_addr: sockaddr_in
@@ -1784,6 +1784,12 @@ server_socket PROC uses esi edi
 	mov len, SIZEOF s_addr
 
 	; 初始化
+	mov recv_flag, 0					
+	mov update_flag, 0					
+	mov send_flag, 0				
+	mov quit_flag, 0						
+	mov connect_flag, 0
+
 	INVOKE WSAStartup, 22h, ADDR sock_data
 	.IF eax != 0
 		ret
@@ -1805,6 +1811,7 @@ server_socket PROC uses esi edi
 	INVOKE listen, sock, 10
 	INVOKE accept, sock, ADDR c_addr, ADDR len
 	mov client, eax
+	mov connect_flag, 1
 
 	; 根据读取标识符在读取状态之间不断地切换
 	.while 1
@@ -1832,12 +1839,16 @@ server_socket PROC uses esi edi
 	ret
 server_socket ENDP
 
-; 对应主动连接模式，相当于客户端，需要输入目标ip地址
 client_socket PROC uses esi edi
 	LOCAL sock_data: WSADATA
 	LOCAL s_addr: sockaddr_in
 
 	; 初始化
+	mov recv_flag, 0					
+	mov update_flag, 0					
+	mov send_flag, 0				
+	mov quit_flag, 0						
+	mov connect_flag, 0
 	INVOKE WSAStartup, 22h, ADDR sock_data
 	.IF eax != 0
 		ret
@@ -1856,6 +1867,7 @@ client_socket PROC uses esi edi
 	mov sock, eax
 	lea esi, s_addr
 	INVOKE connect, sock, esi, SIZEOF sockaddr_in
+	mov connect_flag, 1
 
 	; 根据读取标识符在读取状态之间不断地切换
 	.while 1
