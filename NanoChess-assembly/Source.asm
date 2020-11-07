@@ -2,7 +2,7 @@ TITLE Windows Application                   (WinApp.asm)
 .386
 .model flat,stdcall
 option casemap:none
-.stack 4096
+.stack 9192
 ; This program displays a resizable application window and
 ; several popup message boxes.
 ; Thanks to Tom Joyce for creating a prototype
@@ -82,7 +82,10 @@ mouseY WORD 0
 UI_STAGE BYTE 0		   ; 游戏界面场景（0为初始菜单，1为游戏场景, 2为连接输入界面）
 GAME_STATUS BYTE 0	   ; 游戏状态 (0为普通状态, 1为交换缩小，2为交换放大，3为判断, 4为消去（包含炸弹特效），5为重新生成填充)
 CLICK_ENABLE BYTE 1	   ; 能否点击
+REFRESH_PAINT BYTE 1   ; 是否刷新绘图
 
+GAME_MODE BYTE 0	   ; 游戏模式（0为与AI对战，1为与网络玩家对战）
+USER_TURN BYTE 0	   ; 谁的回合 (0为自己，1为对方)
 
 GOOD_SWAP BYTE 0	; 交换是否可消去
 
@@ -1716,8 +1719,15 @@ Count PROC row: DWORD,
 	mov @target_row, eax
 	mov eax, col
 	mov @target_col, eax
-	mov @count, 0
+	mov @count, 1
 	mov @bonus_count, 0
+	INVOKE Cal_address, edx, @target_row, @target_col
+	mov eax, [eax]
+	mov @chess, eax
+	.if @chess.m_type == 1
+		inc @bonus_count
+	.endif
+	
 	mov @flag, 1
 
 	.while @flag == 1
@@ -1791,10 +1801,11 @@ Count PROC row: DWORD,
 	.if @count >= 3
 		mov eax, 10
 		mul @count
+		.if @bonus_count > 0
+			add eax, 300
+		.endif
 	.endif
-	.if @bonus_count > 0
-		add eax, 300
-	.endif
+
 	
 	pop edx
 	pop ebx
@@ -1903,10 +1914,20 @@ AI PROC
 					add @score, eax
 					mov ebx, @score
 					.if ebx > @max_score
-						INVOKE Cal_address, 0, @row, @col
-						mov selectedChessOne, eax
-						INVOKE Cal_address, 0, @target_row, @target_col
-						mov selectedChessTwo, eax
+						mov selectedChessOne, 0
+						mov eax, @row
+						mul col_num
+						add selectedChessOne, eax
+						mov eax, @col
+						add selectedChessOne, eax
+						
+						mov selectedChessTwo, 0
+						mov eax, @target_row
+						mul col_num
+						add selectedChessTwo, eax
+						mov eax, @target_col
+						add selectedChessTwo, eax
+						
 						mov eax, @score
 						mov @max_score, eax
 					.endif
@@ -2055,14 +2076,14 @@ TimerUpdate PROC,
 			mov @cell2, eax
 
 			.IF @cell1.m_scale == 1
-				mov al, @cell1.m_color
-				mov ah, @cell2.m_color
-				mov @cell1.m_color, ah
-				mov @cell2.m_color, al
-				mov ebx, @chessAddress1
+				;mov al, @cell1.m_color
+				;mov ah, @cell2.m_color
+				;mov @cell1.m_color, ah
+				;mov @cell2.m_color, al
+				mov ebx, @chessAddress2
 				mov eax, @cell1
 				mov [ebx], eax
-				mov ebx, @chessAddress2
+				mov ebx, @chessAddress1
 				mov eax, @cell2
 				mov [ebx], eax
 				
@@ -2149,8 +2170,20 @@ TimerUpdate PROC,
 				.ELSE
 					; 之前触发了三消，则直接回到游戏场景
 					mov selectedChessOne, -1
-					mov GAME_STATUS, 0
-					mov CLICK_ENABLE, 1
+					.IF GAME_MODE == 0
+						.IF USER_TURN == 0
+							INVOKE AI
+							mov GOOD_SWAP, 1
+							mov GAME_STATUS, 1
+							mov USER_TURN, 1
+						.ELSEIF USER_TURN == 1
+							mov GAME_STATUS, 0
+							mov CLICK_ENABLE, 1
+							mov USER_TURN, 0
+						.ENDIF
+					.ELSEIF GAME_MODE == 1
+
+					.ENDIF
 				.ENDIF
 			.ELSE
 				; 存在三消，消去棋子并显示新棋子
@@ -2264,12 +2297,12 @@ WinProc PROC uses ebx edi esi,
 
 	.IF eax == WM_PAINT
 		; 调用绘图过程
+		;.IF REFRESH_PAINT == 1
 		INVOKE PaintProc, hWnd, wParam, lParam
-		INVOKE SetTimer, hWnd, TIMER_GAMETIMER, TIMER_GAMETIMER_ELAPSE, NULL
-		
+		;.ENDIF
 	.ELSEIF eax == WM_CREATE
 		INVOKE InitLoadProc, hWnd, wParam, lParam
-
+		INVOKE SetTimer, hWnd, TIMER_GAMETIMER, TIMER_GAMETIMER_ELAPSE, NULL
 	.ELSEIF eax == WM_LBUTTONDOWN
 		; 点击可用
 		.IF CLICK_ENABLE == 1
@@ -2314,8 +2347,10 @@ LButtonDownProc PROC,
 			movzx eax, @mouseY
 			.IF eax >= BUTTON_Y1 && eax <= BUTTON_Y1 + BUTTON_HEIGHT
 				INVOKE InitializeBoard
+				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 1
 			.ELSEIF eax >= BUTTON_Y2 && eax <= BUTTON_Y2 + BUTTON_HEIGHT
+				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 2
 			.ELSEIF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
 
@@ -2371,6 +2406,7 @@ LButtonDownProc PROC,
 		.IF @selected == -1 || selectedChessOne == -1
 			mov eax, @selected
 			mov selectedChessOne, eax
+			mov REFRESH_PAINT, 1
 		.ELSE
 			mov eax, @selected
 			sub eax, selectedChessOne
@@ -2380,15 +2416,18 @@ LButtonDownProc PROC,
 				mov GOOD_SWAP, 1
 				mov GAME_STATUS, 1
 				mov CLICK_ENABLE, 0
+				mov REFRESH_PAINT, 1
 			.ELSE
 				mov eax, @selected
 				mov selectedChessOne, eax
+				mov REFRESH_PAINT, 1
 			.ENDIF
 		.ENDIF
 
 	.ELSEIF UI_STAGE == 2
 		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
 			mov UI_STAGE, 0
+			mov REFRESH_PAINT, 1
 			ret
 		.ENDIF
 
@@ -2397,6 +2436,7 @@ LButtonDownProc PROC,
 			.IF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
 				INVOKE InitializeBoard
 				mov UI_STAGE, 1
+				mov REFRESH_PAINT, 1
 			.ENDIF
 				
 		.ENDIF
@@ -2412,8 +2452,8 @@ PaintProc PROC,
 ;-----------------------------------------------------
 	local   @ps:PAINTSTRUCT
 	local   @blankBmp:HBITMAP
-	local   @hdcWindow:DWORD
-	local   @hdcLoadBmp:DWORD
+	;local   @hdcWindow:DWORD
+	;local   @hdcLoadBmp:DWORD
 	local   @hdcMemBuffer:DWORD
 	local	@stRect:RECT
 	local	@hFont
@@ -2467,6 +2507,7 @@ PaintProc PROC,
 						BUTTON_X,					
 						BUTTON_Y3,					
 						BUTTON_WIDTH, BUTTON_HEIGHT
+		mov REFRESH_PAINT, 0
 
 	.ELSEIF UI_STAGE == 1
 
@@ -2699,7 +2740,7 @@ PaintProc PROC,
 							CELL_WIDTH, CELL_HEIGHT
 
 			.ENDIF
-
+			mov REFRESH_PAINT, 0
 		.ENDIF
 
 	.ELSEIF UI_STAGE == 2
@@ -2715,14 +2756,15 @@ PaintProc PROC,
 		INVOKE GdipDrawImageI, graphics, hInputDialog,
 				DIALOG_X,					
 				DIALOG_Y
-
+		mov REFRESH_PAINT, 0
 	.ENDIF
 
 	INVOKE BitBlt, hDC ,0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, @hdcMemBuffer, 0, 0, SRCCOPY
-	;invoke DeleteObject,@hFont
+	invoke GdipDeleteGraphics, graphics
 	invoke DeleteDC, @hdcMemBuffer
+	invoke DeleteObject, @blankBmp
 	;invoke DeleteDC,@hdcLoadBmp
-	invoke  EndPaint,hWnd,addr @ps
+	invoke  EndPaint,hWnd, addr @ps
 	ret
 
 PaintProc ENDP
