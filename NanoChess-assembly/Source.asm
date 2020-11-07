@@ -84,7 +84,7 @@ CLICK_BOARD_Y equ BOARD_Y
 CLICK_CELL_WIDTH equ CELL_WIDTH / 4 * 3
 CLICK_CELL_HEIGHT equ CELL_HEIGHT
 
-INIT_SCORE equ 10000
+INIT_SCORE equ 1000
 
 DAMAGE_PER_CHESS equ 50
 
@@ -171,6 +171,7 @@ s_addr sockaddr_in <>
 c_addr sockaddr_in <>
 ip_addr sockaddr_in <>
 
+connected BYTE 0
 
 ; 播放音乐命令
 playSongCommand BYTE "play ./lemon.mp3", 0
@@ -1824,16 +1825,17 @@ set_send PROC uses esi eax ebp ecx ebx
 		mov eax, damage
 		mov DWORD PTR [esi], eax
 		add esi, 4
-		
-		mov ebp, OFFSET chessboard
-		mov ecx, 0
-		.while ecx < 153
-			mov eax, DWORD PTR [ebp]
-			mov DWORD PTR [esi], eax
-			add ebp, 4
-			add esi, 4
-			inc ecx
-		.endw
+		;mov esi, OFFSET result
+		;add esi, 8
+		;mov ebp, OFFSET chessboard
+		;mov ecx, 0
+		;.while ecx < 153
+			;mov eax, DWORD PTR [ebp]
+			;mov DWORD PTR [esi], eax
+			;add ebp, 4
+			;add esi, 4
+			;inc ecx
+		;.endw
 	.elseif send_flag == 3			; 发送终止符
 		mov recv_flag, 1
 	.endif
@@ -1968,7 +1970,14 @@ client_socket PROC uses esi edi
 	INVOKE socket, AF_INET, SOCK_STREAM, IPPROTO_TCP
 	mov sock, eax
 	lea esi, s_addr
+connectL1:
 	INVOKE connect, sock, esi, SIZEOF sockaddr_in
+	.IF eax == -1
+		.IF UI_STAGE != 3
+			jmp closeThread
+		.ENDIF
+		jmp connectL1
+	.ENDIF
 	mov connect_flag, 1
 
 	; 根据读取标识符在读取状态之间不断地切换
@@ -1990,7 +1999,8 @@ client_socket PROC uses esi edi
 			.break
 		.endif
 	.endw
-	
+
+closeThread:
 	; 清理
 	mov connect_flag, 0
 	.IF sock != 0
@@ -2454,8 +2464,10 @@ TimerUpdate PROC,
 
 	.ELSEIF UI_STAGE == 1
 		; 游戏场景
-
-		.IF GAME_STATUS == 1
+		.IF GAME_STATUS == 0
+			mov update_flag, 0
+			mov connected, 0
+		.ELSEIF GAME_STATUS == 1
 			; 交换缩小
 			mov eax, selectedChessOne
 			mov ebx, TYPE CELL
@@ -2566,7 +2578,7 @@ TimerUpdate PROC,
 ;					INVOKE closesocket, sock
 ;					INVOKE WSACleanup
 ;					mov sock, 0
-				.ENDIF
+;				.ENDIF
 			.ELSEIF USER_TURN == 1 && USER1_SCORE == 0
 				mov UI_STAGE, 20
 				mov CLICK_ENABLE, 1
@@ -2652,6 +2664,17 @@ TimerUpdate PROC,
 							.IF GOOD_SWAP == 1
 								mov send_flag, 1
 							.ELSEIF GOOD_SWAP == 0
+								mov edx, OFFSET result
+								add edx, 8
+								mov ebx, OFFSET chessboard
+								mov ecx, 0
+								.while ecx < 153
+									mov eax, DWORD PTR [ebx]
+									mov DWORD PTR [edx], eax
+									add ebx, 4
+									add edx, 4
+									inc ecx
+								.endw
 								mov send_flag, 2
 							.ENDIF
 							.IF USER_TURN == 0
@@ -2840,6 +2863,17 @@ TimerUpdate PROC,
 		; 等待远程玩家连接
 		.IF connect_flag == 1
 			INVOKE InitGameProc
+			mov edx, OFFSET result
+			add edx, 8
+			mov ebx, OFFSET chessboard
+			mov ecx, 0
+			.while ecx < 153
+				mov eax, DWORD PTR [ebx]
+				mov DWORD PTR [edx], eax
+				add ebx, 4
+				add edx, 4
+				inc ecx
+			.endw
 			mov send_flag, 2
 			mov connect_flag, 0
 			mov UI_STAGE, 1
@@ -2849,7 +2883,8 @@ TimerUpdate PROC,
 		.IF connect_flag == 1
 			mov recv_flag, 1
 			mov connect_flag, 0
-		.ELSEIF update_flag == 2
+			mov connected, 1
+		.ELSEIF connected == 1 && update_flag == 2
 			mov update_flag, 0
 			mov recv_flag, 1
 			mov USER1_SCORE, INIT_SCORE
