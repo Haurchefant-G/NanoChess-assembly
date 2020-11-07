@@ -24,6 +24,8 @@ include	 msimg32.inc
 includelib  msimg32.lib
 include masm32.inc
 includelib  masm32.lib
+include wsock32.inc
+includelib  wsock32.lib
 
 .const
 Column equ 9
@@ -149,7 +151,7 @@ dir_num DWORD 6
 
 ; socket相关
 local_ip DB "127.0.0.1", 0				;----------本地IP地址
-server_ip DB 128 DUP(0)					;----------服务器IP地址
+server_ip DB "127.0.0.1", 128 DUP(0)	;----------服务器IP地址
 port DWORD 30086					;----------端口
 result DB 2048 DUP(0)					;----------接收信息结果
 BUFSIZE DWORD 1024					;----------读写大小
@@ -205,6 +207,7 @@ $$Unicode returnButton, png\return.png				; 返回主界面
 $$Unicode connectButton, png\connect.png			; 连接
 
 $$Unicode inputDialog, png\inputIP.png		; 输入IP对话框
+$$Unicode waitDialog, png\waitConnect.png	; 等待连接输入框
 $$Unicode winDialog, png\win.png			; 游戏胜利
 $$Unicode loseDialog, png\lose.png			; 游戏失败
 
@@ -231,6 +234,7 @@ hStartButton3  DWORD 0
 hReturnButton  DWORD 0
 hConnectButton  DWORD 0
 hInputDialog  DWORD 0
+hWaitDialog  DWORD 0
 hWinDialog  DWORD 0
 hLoseDialog  DWORD 0
 
@@ -267,6 +271,21 @@ shuffleCount DWORD 0
 ;------------------------
 .code
 
+; -------
+Str_length PROC USES edi, 
+	pString:PTR BYTE
+; 获取字符串的长度 
+; pString是指向该字符串地址的指针 
+; -----------
+	mov edi,pString 
+	mov eax,0 
+L1: cmp BYTE PTR[edi],0  
+	je L2 
+	inc edi 
+	inc eax 
+	jmp L1 
+L2: ret  
+Str_length ENDP
 
 ; 获取first到second闭区间内的伪随机整数，以eax返回
 GetRandomInt PROC uses ecx edx first:DWORD, second:DWORD
@@ -1700,8 +1719,8 @@ parse_recv PROC uses esi eax
 		add esi, 4
 		mov eax, DWORD PTR [esi]
 		mov selectedChessTwo, eax
-		invoke crt_printf, addr info, selectedChessOne
-		invoke crt_printf, addr info, selectedChessTwo
+		; invoke crt_printf, addr info, selectedChessOne
+		; invoke crt_printf, addr info, selectedChessTwo
 	.elseif flag == 2				; 棋盘信息
 		mov update_flag, 2
 
@@ -2698,8 +2717,10 @@ LButtonDownProc PROC,
 			.ELSEIF eax >= BUTTON_Y2 && eax <= BUTTON_Y2 + BUTTON_HEIGHT
 				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 2
+				INVOKE CreateThread, NULL, NULL, ADDR server_socket, NULL, 0, NULL
 			.ELSEIF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
-
+				mov REFRESH_PAINT, 1
+				mov UI_STAGE, 3
 			.ENDIF
 				
 		.ENDIF
@@ -2769,8 +2790,14 @@ LButtonDownProc PROC,
 				mov REFRESH_PAINT, 1
 			.ENDIF
 		.ENDIF
-
 	.ELSEIF UI_STAGE == 2
+		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
+			mov UI_STAGE, 0
+			mov REFRESH_PAINT, 1
+			mov quit_flag, 1
+			ret
+		.ENDIF
+	.ELSEIF UI_STAGE == 3
 		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
 			mov UI_STAGE, 0
 			mov REFRESH_PAINT, 1
@@ -2780,7 +2807,7 @@ LButtonDownProc PROC,
 		.IF @mouseX >= BUTTON_X && @mouseX <= BUTTON_X + BUTTON_WIDTH
 			movzx eax, @mouseY
 			.IF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
-				INVOKE InitializeBoard
+				INVOKE CreateThread, NULL, NULL, ADDR client_socket, NULL, 0, NULL
 				mov UI_STAGE, 1
 				mov REFRESH_PAINT, 1
 			.ENDIF
@@ -3163,8 +3190,23 @@ PaintProc PROC,
 		INVOKE SetBkMode, @hdcMemBuffer, TRANSPARENT
 		INVOKE TextOut, @hdcMemBuffer, USER1_SCORE_X, USER1_SCORE_Y, ADDR USER1_SCORE_TEXT, USER1_SCORE_TEXT_LEN
 		INVOKE TextOut, @hdcMemBuffer, USER2_SCORE_X, USER2_SCORE_Y, ADDR USER2_SCORE_TEXT, USER2_SCORE_TEXT_LEN
-
 	.ELSEIF UI_STAGE == 2
+		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
+		INVOKE GdipDrawImageRectI, graphics, hReturnButton,
+				WINDOW_WIDTH - RETURN_WIDTH,					
+				0,
+				RETURN_WIDTH, RETURN_HEIGHT
+		INVOKE GdipDrawImageI, graphics, hWaitDialog,
+				DIALOG_X,					
+				DIALOG_Y
+		; 绘制输入ip
+		INVOKE SelectObject, @hdcMemBuffer, hFont
+		INVOKE SetTextColor, @hdcMemBuffer, 0FFFFFFh ; 产生白色的画笔
+		INVOKE SetBkMode, @hdcMemBuffer, TRANSPARENT
+		INVOKE Str_length, ADDR local_ip
+		INVOKE TextOut, @hdcMemBuffer, DIALOG_X + 120, DIALOG_Y + 170, ADDR local_ip, eax
+		mov REFRESH_PAINT, 0
+	.ELSEIF UI_STAGE == 3
 		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
 		INVOKE GdipDrawImageRectI, graphics, hReturnButton,
 				WINDOW_WIDTH - RETURN_WIDTH,					
@@ -3177,6 +3219,12 @@ PaintProc PROC,
 		INVOKE GdipDrawImageI, graphics, hInputDialog,
 				DIALOG_X,					
 				DIALOG_Y
+		; 绘制输入ip
+		INVOKE SelectObject, @hdcMemBuffer, hFont
+		INVOKE SetTextColor, @hdcMemBuffer, 0FFFFFFh ; 产生白色的画笔
+		INVOKE SetBkMode, @hdcMemBuffer, TRANSPARENT
+		INVOKE Str_length, ADDR server_ip
+		INVOKE TextOut, @hdcMemBuffer, DIALOG_X + 120, DIALOG_Y + 170, ADDR server_ip, eax
 		mov REFRESH_PAINT, 0
 	.ELSEIF UI_STAGE == 10
 		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
@@ -3227,6 +3275,7 @@ InitLoadProc PROC,
 	INVOKE GdipLoadImageFromFile, OFFSET connectButton, ADDR hConnectButton
 
 	INVOKE GdipLoadImageFromFile, OFFSET inputDialog, ADDR hInputDialog
+	INVOKE GdipLoadImageFromFile, OFFSET waitDialog, ADDR hWaitDialog
 	INVOKE GdipLoadImageFromFile, OFFSET winDialog, ADDR hWinDialog
 	INVOKE GdipLoadImageFromFile, OFFSET loseDialog, ADDR hLoseDialog
 
