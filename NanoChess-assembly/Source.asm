@@ -156,7 +156,7 @@ dir_num DWORD 6
 ; socket相关
 local_ip DB "127.0.0.1", 0				;----------本地IP地址
 server_ip DB "127.0.0.1", 128 DUP(0)	;----------服务器IP地址
-port DWORD 30086					;----------端口
+port DWORD 30100					;----------端口
 result DB 2048 DUP(0)					;----------接收信息结果
 BUFSIZE DWORD 1024					;----------读写大小
 sock DWORD ?						;----------socket
@@ -1709,7 +1709,7 @@ InspectAndResolveContinuousCells ENDP
 ; 信息头有3种类型，1代表交换的棋子，2代表棋盘信息和分数，3代表终止符
 parse_recv PROC uses esi eax ebp ecx
 	LOCAL flag: DWORD
-	LOCAL @count: DWORD
+	LOCAL count: DWORD
 
 	; 获取信息头
 	mov esi, OFFSET result
@@ -1729,8 +1729,7 @@ parse_recv PROC uses esi eax ebp ecx
 		mov eax, DWORD PTR [esi]
 		mov damage, eax
 		add esi, 4
-		;mov esi, OFFSET result
-		;add esi, 16
+
 		;mov ebp, OFFSET chessboard
 		;mov ecx, 0
 		;.while ecx < 153			
@@ -1742,22 +1741,23 @@ parse_recv PROC uses esi eax ebp ecx
 			;inc ecx
 		;.endw
 	.elseif flag == 2				; 棋盘信息
-		mov update_flag, 2
-
 		mov eax, DWORD PTR [esi]
 		mov damage, eax
 		add esi, 4
 
 		mov ebp, OFFSET chessboard
 		mov ecx, 0
-		.while ecx < 153			
+		.while ecx < 153
+			;pushad
+			;INVOKE crt_printf, addr output, ebp, esi, ecx
+			;popad
 			mov eax, DWORD PTR [esi]
 			mov DWORD PTR [ebp], eax
-			
 			add ebp, 4
 			add esi, 4
 			inc ecx
 		.endw
+		mov update_flag, 2
 	.elseif flag == 3				; 终止符
 		mov update_flag, 3
 		
@@ -1770,7 +1770,7 @@ parse_recv ENDP
 ; 设置发送的信息
 ; 信息头定义见上文
 set_send PROC uses esi eax ebp ecx ebx
-	LOCAL @count: BYTE
+	LOCAL count: DWORD
 
 	; 初始化result
 	; 设置信息头
@@ -1823,14 +1823,11 @@ set_send PROC uses esi eax ebp ecx ebx
 		mov ebp, OFFSET chessboard
 		mov ecx, 0
 		.while ecx < 153
-			;pushad
-			;INVOKE crt_printf, addr output, ebp, esi, ecx
-			;popad
 			mov eax, DWORD PTR [ebp]
 			mov DWORD PTR [esi], eax
 			add ebp, 4
 			add esi, 4
-			add ecx, 1
+			inc ecx
 		.endw
 	.elseif send_flag == 3			; 发送终止符
 		mov recv_flag, 1
@@ -1845,13 +1842,10 @@ server_socket PROC uses esi edi
 	LOCAL sock_data: WSADATA
 	LOCAL s_addr: sockaddr_in
 	LOCAL c_addr: sockaddr_in
-	LOCAL ip_addr: sockaddr_in
 	LOCAL len: DWORD
-	LOCAL len_ip: DWORD
-	LOCAL ip: DWORD
+	LOCAL is_read: DWORD
 
 	mov len, SIZEOF s_addr
-	mov len_ip, SIZEOF ip_addr
 
 	; 初始化
 	mov recv_flag, 0					
@@ -1866,14 +1860,6 @@ server_socket PROC uses esi edi
 	.ENDIF
 
 	; 设置服务器ip和端口
-	INVOKE getsockname, sock, ADDR ip_addr, ADDR len_ip
-	lea esi, ip_addr
-	add esi, 4
-	mov eax, DWORD PTR [esi]
-	mov ip, eax
-	INVOKE inet_ntoa, ip
-	mov local_ip, eax
-	
 	lea esi, s_addr
 	mov WORD PTR [esi], AF_INET
 	INVOKE htons, port
@@ -1912,6 +1898,7 @@ server_socket PROC uses esi edi
 	.endw
 
 	; 清理
+	mov connect_flag, 0
 	INVOKE closesocket, sock
 	INVOKE WSACleanup
 	ret
@@ -1968,6 +1955,7 @@ client_socket PROC uses esi edi
 	.endw
 	
 	; 清理
+	mov connect_flag, 0
 	INVOKE closesocket, sock
 	INVOKE WSACleanup
 	ret
@@ -2533,10 +2521,16 @@ TimerUpdate PROC,
 				mov UI_STAGE, 10
 				mov CLICK_ENABLE, 1
 				mov quit_flag, 1
+				mov connect_flag, 0
+				INVOKE closesocket, sock
+				INVOKE WSACleanup
 			.ELSEIF USER_TURN == 1 && USER1_SCORE == 0
 				mov UI_STAGE, 20
 				mov CLICK_ENABLE, 1
 				mov quit_flag, 1
+				mov connect_flag, 0
+				INVOKE closesocket, sock
+				INVOKE WSACleanup
 			.ELSE
 				.IF GAME_MODE == 0
 					; 判断是否存在三消
@@ -2852,7 +2846,7 @@ TimerUpdate ENDP
 
 
 ;-----------------------------------------------------
-WinProc PROC,
+WinProc PROC uses ebx edi esi,
 	hWnd:DWORD, localMsg:DWORD, wParam:DWORD, lParam:DWORD
 ; windows窗口消息处理
 ;-----------------------------------------------------
@@ -2950,6 +2944,10 @@ LButtonDownProc PROC,
 	.ELSEIF UI_STAGE == 1
 		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
 			mov UI_STAGE, 0
+			mov quit_flag, 1
+			mov connect_flag, 0
+			INVOKE closesocket, sock
+			INVOKE WSACleanup
 			ret
 		.ENDIF
 		movzx eax, @mouseX
@@ -3018,12 +3016,19 @@ LButtonDownProc PROC,
 			mov UI_STAGE, 0
 			mov REFRESH_PAINT, 1
 			mov quit_flag, 1
+			mov connect_flag, 0
+			INVOKE closesocket, sock
+			INVOKE WSACleanup
 			ret
 		.ENDIF
 	.ELSEIF UI_STAGE == 3
 		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
 			mov UI_STAGE, 0
 			mov REFRESH_PAINT, 1
+			mov quit_flag, 1
+			mov connect_flag, 0
+			INVOKE closesocket, sock
+			INVOKE WSACleanup
 			ret
 		.ENDIF
 
@@ -3038,6 +3043,10 @@ LButtonDownProc PROC,
 		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
 			mov UI_STAGE, 0
 			mov REFRESH_PAINT, 1
+			mov quit_flag, 1
+			mov connect_flag, 0
+			INVOKE closesocket, sock
+			INVOKE WSACleanup
 			ret
 		.ENDIF
 	.ENDIF
