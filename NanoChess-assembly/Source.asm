@@ -84,7 +84,7 @@ CLICK_BOARD_Y equ BOARD_Y
 CLICK_CELL_WIDTH equ CELL_WIDTH / 4 * 3
 CLICK_CELL_HEIGHT equ CELL_HEIGHT
 
-INIT_SCORE equ 1000
+INIT_SCORE equ 10000
 
 DAMAGE_PER_CHESS equ 50
 
@@ -155,7 +155,7 @@ dir_num DWORD 6
 
 ; socket相关
 local_ip DB 32 DUP(0)								;----------本地IP地址
-server_ip DB "183.172.210.86", 16 DUP(0)			;----------服务器IP地址
+server_ip DB "183.172.115.218", 16 DUP(0)			;----------服务器IP地址
 dns_ip DB "8.8.8.8", 0								;----------dns IP
 port DWORD 30100									;----------端口
 result DB 2048 DUP(0)								;----------接收信息结果
@@ -1934,8 +1934,11 @@ server_socket PROC uses esi edi ebp
 
 	; 清理
 	mov connect_flag, 0
-	INVOKE closesocket, sock
-	INVOKE WSACleanup
+	.IF sock != 0
+		INVOKE closesocket, sock
+		INVOKE WSACleanup
+		mov sock, 0
+	.ENDIF
 	ret
 server_socket ENDP
 
@@ -1990,8 +1993,11 @@ client_socket PROC uses esi edi
 	
 	; 清理
 	mov connect_flag, 0
-	INVOKE closesocket, sock
-	INVOKE WSACleanup
+	.IF sock != 0
+		INVOKE closesocket, sock
+		INVOKE WSACleanup
+		mov sock, 0
+	.ENDIF
 	ret
 client_socket ENDP
 
@@ -2556,15 +2562,21 @@ TimerUpdate PROC,
 				mov CLICK_ENABLE, 1
 ;				mov quit_flag, 1
 ;				mov connect_flag, 0
-;				INVOKE closesocket, sock
-;				INVOKE WSACleanup
+;				.IF sock != 0
+;					INVOKE closesocket, sock
+;					INVOKE WSACleanup
+;					mov sock, 0
+				.ENDIF
 			.ELSEIF USER_TURN == 1 && USER1_SCORE == 0
 				mov UI_STAGE, 20
 				mov CLICK_ENABLE, 1
 ;				mov quit_flag, 1
 ;				mov connect_flag, 0
-;				INVOKE closesocket, sock
-;				INVOKE WSACleanup
+;				.IF sock != 0
+;					INVOKE closesocket, sock
+;					INVOKE WSACleanup
+;					mov sock, 0
+;				.ENDIF
 			.ELSE
 				.IF GAME_MODE == 0
 					; 判断是否存在三消
@@ -2980,8 +2992,11 @@ LButtonDownProc PROC,
 			mov UI_STAGE, 0
 			mov quit_flag, 1
 			mov connect_flag, 0
-			INVOKE closesocket, sock
-			INVOKE WSACleanup
+			.IF sock != 0
+				INVOKE closesocket, sock
+				INVOKE WSACleanup
+				mov sock, 0
+			.ENDIF
 			ret
 		.ENDIF
 		movzx eax, @mouseX
@@ -3051,8 +3066,11 @@ LButtonDownProc PROC,
 			mov REFRESH_PAINT, 1
 			mov quit_flag, 1
 			mov connect_flag, 0
-			INVOKE closesocket, sock
-			INVOKE WSACleanup
+			.IF sock != 0
+				INVOKE closesocket, sock
+				INVOKE WSACleanup
+				mov sock, 0
+			.ENDIF
 			ret
 		.ENDIF
 	.ELSEIF UI_STAGE == 3
@@ -3061,8 +3079,11 @@ LButtonDownProc PROC,
 			mov REFRESH_PAINT, 1
 			mov quit_flag, 1
 			mov connect_flag, 0
-			INVOKE closesocket, sock
-			INVOKE WSACleanup
+			.IF sock != 0
+				INVOKE closesocket, sock
+				INVOKE WSACleanup
+				mov sock, 0
+			.ENDIF
 			ret
 		.ENDIF
 
@@ -3079,8 +3100,11 @@ LButtonDownProc PROC,
 			mov REFRESH_PAINT, 1
 			mov quit_flag, 1
 			mov connect_flag, 0
-			INVOKE closesocket, sock
-			INVOKE WSACleanup
+			.IF sock != 0
+				INVOKE closesocket, sock
+				INVOKE WSACleanup
+				mov sock, 0
+			.ENDIF
 			ret
 		.ENDIF
 	.ENDIF
