@@ -1756,10 +1756,9 @@ parse_recv PROC uses esi eax ebp
 	.elseif flag == 3				; 终止符
 		mov update_flag, 3
 		
-		; 终止符意味着消息已经发完，将flag置为静止
-		mov recv_flag, 0
 	.endif
 
+	mov recv_flag, 0
 	ret
 parse_recv ENDP
 
