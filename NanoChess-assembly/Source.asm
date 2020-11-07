@@ -80,7 +80,7 @@ CLICK_BOARD_Y equ BOARD_Y
 CLICK_CELL_WIDTH equ CELL_WIDTH / 4 * 3
 CLICK_CELL_HEIGHT equ CELL_HEIGHT
 
-INIT_SCORE equ 10000
+INIT_SCORE equ 1000
 
 DAMAGE_PER_CHESS equ 50
 
@@ -2272,7 +2272,7 @@ TimerUpdate PROC,
 						sub eax, damage
 						mov newScore, eax
 					.ENDIF
-					.IF newScore < 0
+					.IF newScore < 0 || newScore > INIT_SCORE
 						mov newScore, 0
 					.ENDIF
 					INVOKE IntToString, damage, ADDR DAMAGE_TEXT
@@ -2324,13 +2324,13 @@ TimerUpdate PROC,
 				div ebx
 				.IF USER_TURN == 0
 					sub USER2_SCORE, eax
-					.IF USER2_SCORE < 0
+					.IF USER2_SCORE < 0 || USER2_SCORE > INIT_SCORE
 						mov USER2_SCORE, 0
 					.ENDIF
 					INVOKE IntToString, USER2_SCORE, ADDR USER2_SCORE_TEXT
 				.ELSEIF USER_TURN == 1
 					sub USER1_SCORE, eax
-					.IF USER1_SCORE < 0
+					.IF USER1_SCORE < 0 || USER1_SCORE > INIT_SCORE
 						mov USER1_SCORE, 0
 					.ENDIF
 					INVOKE IntToString, USER1_SCORE, ADDR USER1_SCORE_TEXT
