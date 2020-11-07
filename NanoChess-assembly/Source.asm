@@ -2497,9 +2497,11 @@ TimerUpdate PROC,
 			.IF USER_TURN == 0 && USER2_SCORE == 0
 				mov UI_STAGE, 10
 				mov CLICK_ENABLE, 1
+				mov quit_flag, 1
 			.ELSEIF USER_TURN == 1 && USER1_SCORE == 0
 				mov UI_STAGE, 20
 				mov CLICK_ENABLE, 1
+				mov quit_flag, 1
 			.ELSE
 				.IF GAME_MODE == 0
 					; 判断是否存在三消
@@ -2607,7 +2609,6 @@ TimerUpdate PROC,
 						.ELSEIF
 							.IF update_flag == 2
 								mov update_flag, 0
-								mov recv_flag, 1
 								mov eax, USER1_SCORE
 								sub eax, damage
 								mov newScore, eax
@@ -2728,6 +2729,10 @@ TimerUpdate PROC,
 				mov eax, 2 * TYPE CELL
 				add @chessAddress1, eax
 			.ENDW
+
+			.IF GAME_MODE == 1 && USER_TURN == 1
+				mov recv_flag, 1
+			.ENDIF
 		.ELSEIF GAME_STATUS == 6
 			; 对手交换棋子动画过程
 			add AIdelay, 1
@@ -2739,7 +2744,6 @@ TimerUpdate PROC,
 			; 远程对战模式下等待对方交换棋子
 			.IF update_flag == 1
 				mov update_flag, 0
-				mov recv_flag, 1
 				mov GAME_STATUS, 6
 			.ENDIF
 		.ENDIF
@@ -2748,8 +2752,9 @@ TimerUpdate PROC,
 		; 等待远程玩家连接
 		.IF connect_flag == 1
 			INVOKE InitGameProc
-			mov send_flag, 1
+			mov send_flag, 2
 			mov connect_flag, 0
+			mov UI_STAGE, 1
 		.ENDIF
 	.ELSEIF UI_STAGE == 3
 		; 准备连接远程玩家
@@ -2768,7 +2773,9 @@ TimerUpdate PROC,
 			mov CLICK_ENABLE, 0
 			mov USER_TURN, 1
 			mov damage, 0
-			mov GAME_STATUS, 3
+			mov GAME_STATUS, 7
+			mov UI_STAGE, 1
+			mov REFRESH_PAINT, 1
 		.ENDIF
 	.ENDIF
 
@@ -2976,8 +2983,6 @@ LButtonDownProc PROC,
 			movzx eax, @mouseY
 			.IF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
 				INVOKE CreateThread, NULL, NULL, ADDR client_socket, NULL, 0, NULL
-				mov UI_STAGE, 1
-				mov REFRESH_PAINT, 1
 			.ENDIF
 				
 		.ENDIF
