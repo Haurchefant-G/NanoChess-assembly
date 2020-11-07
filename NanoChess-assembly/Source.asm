@@ -2615,8 +2615,31 @@ TimerUpdate PROC,
 		.ENDIF
 
 	.ELSEIF UI_STAGE == 2
-		
+		; 等待远程玩家连接
+		.IF connect_flag == 1
+			INVOKE InitGameProc
+			mov updateflag, 2
+			mov send_flag, 1
+			mov connect_flag, 0
+		.ENDIF
+	.ELSEIF UI_STAGE == 3
+		; 准备连接远程玩家
+		.IF connect_flag == 1
+			mov recv_flag, 1
+			mov connect_flag, 0
 
+			INVOKE InitializeBoard
+			mov USER1_SCORE, INIT_SCORE
+			INVOKE IntToString, USER1_SCORE, ADDR USER1_SCORE_TEXT
+			mov USER2_SCORE, INIT_SCORE
+			INVOKE IntToString, USER2_SCORE, ADDR USER2_SCORE_TEXT
+			mov selectedChessOne, -1
+			mov GOOD_SWAP, 1
+			mov CLICK_ENABLE, 1
+			mov USER_TURN, 0
+			mov damage, 0
+			mov GAME_STATUS, 0
+		.ENDIF
 	.ENDIF
 
 	;mov @chessAddress, OFFSET chessboard
