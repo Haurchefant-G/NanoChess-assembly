@@ -3,11 +3,6 @@ TITLE Windows Application                   (WinApp.asm)
 .model flat,stdcall
 option casemap:none
 .stack 9192
-; This program displays a resizable application window and
-; several popup message boxes.
-; Thanks to Tom Joyce for creating a prototype
-; from which this program was derived.
-; Last update: 9/24/01
 
 include	 windows.inc
 include	 gdi32.inc
@@ -4023,20 +4018,6 @@ ErrorHandler PROC
 pErrorMsg  DWORD ?		; ptr to error message
 messageID  DWORD ?
 .code
-	;INVOKE GetLastError	; Returns message ID in EAX
-	;mov messageID,eax
-;
-	;; Get the corresponding message string.
-	;INVOKE FormatMessage, FORMAT_MESSAGE_ALLOCATE_BUFFER + \
-	  ;FORMAT_MESSAGE_FROM_SYSTEM,NULL,messageID,NULL,
-	  ;ADDR pErrorMsg,NULL,NULL
-;
-	;; Display the error message.
-	;INVOKE MessageBox,NULL, pErrorMsg, ADDR ErrorTitle,
-	  ;MB_ICONERROR+MB_OK
-;
-	;; Free the error message string.
-	;INVOKE LocalFree, pErrorMsg
 	ret
 ErrorHandler ENDP
 
