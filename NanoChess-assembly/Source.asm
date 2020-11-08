@@ -185,7 +185,16 @@ ip_addr sockaddr_in <>
 connected BYTE 0
 
 ; 播放音乐命令
-playSongCommand BYTE "play ./lemon.mp3", 0
+play_BGMForUI BYTE "open ./mp3/BGMForUI.mp3 alias my_music", 0			;播放初始界面BGM
+play_BGMForGame BYTE "open ./mp3/BgForGame.mp3 alias my_music", 0		;播放游戏界面BGM
+play_music BYTE "play my_music repeat", 0					;播放BGM
+stop_music BYTE "stop my_music", 0						;停止播放
+close_music BYTE "close my_music", 0						;关闭
+
+play_Click BYTE "play ./mp3/Click.mp3", 0					;点击音效
+play_Bomb BYTE "play ./mp3/Bomb.mp3", 0						;炸弹音效
+play_Victory BYTE "play ./mp3/Victory.mp3", 0					;胜利音效
+play_Swap BYTE "play ./mp3/Swap.mp3", 0						;交换角色
 
 ; win32相关
 hInstance DWORD ?
@@ -311,6 +320,58 @@ L1: cmp BYTE PTR[edi],0
 	jmp L1 
 L2: ret  
 Str_length ENDP
+
+;------------------所有音效直接调用相应的函数即可
+
+;------------------注意,只能有一个BGM处于播放状态，播放当前BGM时会自动关闭之前的BGM
+; 关闭BGM
+music_stop PROC
+	invoke mciSendString, ADDR stop_music, NULL, 0, NULL
+	invoke mciSendString, ADDR close_music, NULL, 0, NULL
+	ret
+music_stop ENDP
+
+; 播放游戏界面BGM
+; 循环播放
+music_BGMForGame PROC
+	invoke music_stop
+	invoke mciSendString, ADDR play_BGMForGame, NULL, 0, NULL
+	invoke mciSendString, ADDR play_music, NULL, 0, NULL
+	ret
+music_BGMForGame ENDP
+
+; 播放菜单界面BGM
+; 循环播放
+music_BGMForUI PROC
+	invoke music_stop	
+	invoke mciSendString, ADDR play_BGMForUI, NULL, 0, NULL
+	invoke mciSendString, ADDR play_music, NULL, 0, NULL
+	ret
+music_BGMForUI ENDP
+
+; 点击音效
+music_Click PROC
+	invoke mciSendString, ADDR play_Click, NULL, 0, NULL
+	ret
+music_Click ENDP
+
+; 炸弹音效
+music_Bomb PROC
+	invoke mciSendString, ADDR play_Bomb, NULL, 0, NULL
+	ret
+music_Bomb ENDP
+
+; 胜利音效
+music_Victory PROC
+	invoke mciSendString, ADDR play_Victory, NULL, 0, NULL
+	ret
+music_Victory ENDP
+
+; 交换音效
+music_Swap PROC
+	invoke mciSendString, ADDR play_Swap, NULL, 0, NULL
+	ret
+music_Swap ENDP
 
 ; 获取first到second闭区间内的伪随机整数，以eax返回
 GetRandomInt PROC uses ecx edx first:DWORD, second:DWORD
