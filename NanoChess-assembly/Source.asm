@@ -2524,9 +2524,6 @@ IntToString ENDP
 WinMain PROC
 ; windows窗口程序入口函数
 ;--------------
-	; 播放音乐
-	; invoke mciSendString, ADDR playSongCommand, NULL, 0, NULL;
-
 
 	; 获得当前程序句柄
 	INVOKE GetModuleHandle, NULL
