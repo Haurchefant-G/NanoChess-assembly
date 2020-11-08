@@ -140,6 +140,7 @@ CELL STRUCT
 	m_scale    BYTE    0    ;占位，凑4字节
 CELL ENDS
 
+nullChess CELL <0,0,0,128>
 ; 棋盘
 chessboard CELL 153 dup(<1,0,0,128>)
 
@@ -266,6 +267,7 @@ hCursor	DWORD 0
 InitLoadProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 PaintProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 InitializeBoard PROTO STDCALL
+OnKeyPress PROTO STDCALL wParam:DWORD
 LButtonDownProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
 IntToString PROTO STDCALL intdata:dword, strAddrees:dword
 InitGameProc PROTO STDCALL
@@ -315,6 +317,15 @@ GetRandomInt PROC uses ecx edx first:DWORD, second:DWORD
 GetRandomInt ENDP
 
 InitializeBoard PROC uses eax ecx edx
+	; 清空棋盘
+	mov ecx, 0
+	mov edx, nullChess
+	mov eax, OFFSET chessboard
+	.WHILE ecx < 153
+		mov [eax], edx
+		add eax, 4
+		add ecx, 1
+	.ENDW
 	; 随机初始化整个棋盘，要求不能有三连元素
 	invoke GetTickCount
 	invoke nseed, eax
@@ -1736,6 +1747,7 @@ parse_recv PROC uses esi eax ebp ecx
 		mov damage, eax
 		add esi, 4
 
+		; 棋盘复制由主线程完成
 		;mov ebp, OFFSET chessboard
 		;mov ecx, 0
 		;.while ecx < 153			
@@ -1751,18 +1763,21 @@ parse_recv PROC uses esi eax ebp ecx
 		mov damage, eax
 		add esi, 4
 
-		mov ebp, OFFSET chessboard
-		mov ecx, 0
-		.while ecx < 153
-			;pushad
-			;INVOKE crt_printf, addr output, ebp, esi, ecx
-			;popad
-			mov eax, DWORD PTR [esi]
-			mov DWORD PTR [ebp], eax
-			add ebp, 4
-			add esi, 4
-			inc ecx
-		.endw
+		; 棋盘复制由主线程完成
+		;mov esi, OFFSET result
+		;add esi, 8
+		;mov ebp, OFFSET chessboard
+		;mov ecx, 0
+		;.while ecx < 153
+			;;pushad
+			;;INVOKE crt_printf, addr output, ebp, esi, ecx
+			;;popad
+			;mov eax, DWORD PTR [esi]
+			;mov DWORD PTR [ebp], eax
+			;add ebp, 4
+			;add esi, 4
+			;inc ecx
+		;.endw
 		mov update_flag, 2
 	.elseif flag == 3				; 终止符
 		mov update_flag, 3
@@ -1805,26 +1820,13 @@ set_send PROC uses esi eax ebp ecx ebx
 			add esi, 4
 			inc ecx
 		.endw
-		; 本地已交换，给远端发送未交换前的
-		;mov esi, OFFSET result
-		;add esi, 16
-		;mov eax, selectedChessOne
-		;mov ebp, TYPE CELL
-		;mul ebp
-		;add eax, esi
-		;mov ecx, eax
-		;mov ebx, DWORD PTR [ecx]
-		;mov eax, selectedChessTwo
-		;mov ebp, TYPE CELL
-		;mul ebp
-		;add eax, esi
-		;mov esi , DWORD PTR [eax]
-		;mov DWORD PTR [ecx], esi
-		;mov DWORD PTR [eax], ebx
+
 	.elseif send_flag == 2			; 发送棋盘信息
 		mov eax, damage
 		mov DWORD PTR [esi], eax
 		add esi, 4
+
+		; 棋盘复制由主线程完成
 		;mov esi, OFFSET result
 		;add esi, 8
 		;mov ebp, OFFSET chessboard
@@ -2719,6 +2721,17 @@ TimerUpdate PROC,
 						.ELSEIF
 							.IF update_flag == 2
 								mov update_flag, 0
+								mov edx, OFFSET result
+								add edx, 8
+								mov ebx, OFFSET chessboard
+								mov ecx, 0
+								.while ecx < 153
+									mov eax, DWORD PTR [edx]
+									mov DWORD PTR [ebx], eax
+									add ebx, 4
+									add edx, 4
+									inc ecx
+								.endw
 								mov eax, USER1_SCORE
 								sub eax, damage
 								mov newScore, eax
@@ -2886,6 +2899,17 @@ TimerUpdate PROC,
 			mov connected, 1
 		.ELSEIF connected == 1 && update_flag == 2
 			mov update_flag, 0
+			mov edx, OFFSET result
+			add edx, 8
+			mov ebx, OFFSET chessboard
+			mov ecx, 0
+			.while ecx < 153
+				mov eax, DWORD PTR [edx]
+				mov DWORD PTR [ebx], eax
+				add ebx, 4
+				add edx, 4
+				inc ecx
+			.endw
 			mov recv_flag, 1
 			mov USER1_SCORE, INIT_SCORE
 			INVOKE IntToString, USER1_SCORE, ADDR USER1_SCORE_TEXT
@@ -2947,8 +2971,8 @@ WinProc PROC uses ebx edi esi,
 			INVOKE LButtonDownProc, hWnd, wParam, lParam
 		.ENDIF
 	.ELSEIF eax == WM_CHAR
-		.IF UI_STAGE == 2
-
+		.IF UI_STAGE == 3
+			INVOKE OnKeyPress, wParam
 		.ENDIF
 
 	.ELSEIF eax == WM_TIMER
@@ -2988,6 +3012,32 @@ InitGameProc PROC
 	mov damage, 0
 	mov GAME_STATUS, 0
 InitGameProc ENDP
+
+;------------------------------------------------
+OnKeyPress PROC, 
+	wParam:DWORD
+	.IF wParam == 8
+		INVOKE Str_length, ADDR server_ip
+		.IF eax == 0
+			ret
+		.ELSE
+			mov ebx, offset server_ip
+			add eax, ebx
+			sub eax, 1
+			mov BYTE PTR [eax], 0
+		.ENDIF
+	.ELSEIF (wParam >= 48 && wParam <= 57) || wParam == 46
+		INVOKE Str_length, ADDR server_ip
+		.IF eax < 15
+			mov ebx, offset server_ip
+			add eax, ebx
+			mov ecx, wParam
+			mov BYTE PTR [eax], cl
+		.ENDIF
+	.ENDIF
+	ret
+OnKeyPress ENDP
+;-------------------------------------------------
 
 ;-----------------------------------------------------
 LButtonDownProc PROC,
@@ -3527,7 +3577,7 @@ PaintProc PROC,
 		INVOKE SetTextColor, @hdcMemBuffer, 0FFFFFFh ; 产生白色的画笔
 		INVOKE SetBkMode, @hdcMemBuffer, TRANSPARENT
 		INVOKE Str_length, ADDR local_ip
-		INVOKE TextOut, @hdcMemBuffer, DIALOG_X + 120, DIALOG_Y + 170, ADDR local_ip, eax
+		INVOKE TextOut, @hdcMemBuffer, DIALOG_X + 110, DIALOG_Y + 170, ADDR local_ip, eax
 		mov REFRESH_PAINT, 0
 	.ELSEIF UI_STAGE == 3
 		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
@@ -3547,7 +3597,7 @@ PaintProc PROC,
 		INVOKE SetTextColor, @hdcMemBuffer, 0FFFFFFh ; 产生白色的画笔
 		INVOKE SetBkMode, @hdcMemBuffer, TRANSPARENT
 		INVOKE Str_length, ADDR server_ip
-		INVOKE TextOut, @hdcMemBuffer, DIALOG_X + 120, DIALOG_Y + 170, ADDR server_ip, eax
+		INVOKE TextOut, @hdcMemBuffer, DIALOG_X + 110, DIALOG_Y + 170, ADDR server_ip, eax
 		mov REFRESH_PAINT, 0
 	.ELSEIF UI_STAGE == 10
 		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
