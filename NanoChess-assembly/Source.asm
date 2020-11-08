@@ -192,9 +192,11 @@ stop_music BYTE "stop my_music", 0						;停止播放
 close_music BYTE "close my_music", 0						;关闭
 
 play_Click BYTE "play ./mp3/Click.mp3", 0					;点击音效
+play_Select BYTE "play ./mp3/ClickOne.mp3", 0					;选中音效
 play_Bomb BYTE "play ./mp3/Bomb.mp3", 0						;炸弹音效
 play_Victory BYTE "play ./mp3/Victory.mp3", 0					;胜利音效
-play_Swap BYTE "play ./mp3/Swap.mp3", 0						;交换角色
+play_Swap BYTE "play ./mp3/Swap.mp3", 0						;交换棋子
+play_ChangeTurn BYTE "play ./mp3/ChangeTurn.mp3", 0				;切换下棋人
 
 ; win32相关
 hInstance DWORD ?
@@ -355,6 +357,12 @@ music_Click PROC
 	ret
 music_Click ENDP
 
+; 选中音效
+music_Select PROC
+	invoke mciSendString, ADDR play_Select, NULL, 0, NULL
+	ret
+music_Select ENDP
+
 ; 炸弹音效
 music_Bomb PROC
 	invoke mciSendString, ADDR play_Bomb, NULL, 0, NULL
@@ -372,6 +380,12 @@ music_Swap PROC
 	invoke mciSendString, ADDR play_Swap, NULL, 0, NULL
 	ret
 music_Swap ENDP
+
+; 切换下棋人
+music_ChangeTurn PROC
+	invoke mciSendString, ADDR play_ChangeTurn, NULL, 0, NULL
+	ret
+music_ChangeTurn ENDP
 
 ; 获取first到second闭区间内的伪随机整数，以eax返回
 GetRandomInt PROC uses ecx edx first:DWORD, second:DWORD
@@ -2641,6 +2655,8 @@ TimerUpdate PROC,
 		.ELSEIF GAME_STATUS == 3
 			.IF USER_TURN == 0 && USER2_SCORE == 0
 				mov UI_STAGE, 10
+				INVOKE music_BGMForUI
+				INVOKE music_Victory
 				mov CLICK_ENABLE, 1
 ;				mov quit_flag, 1
 ;				mov connect_flag, 0
@@ -2651,6 +2667,8 @@ TimerUpdate PROC,
 ;				.ENDIF
 			.ELSEIF USER_TURN == 1 && USER1_SCORE == 0
 				mov UI_STAGE, 20
+				INVOKE music_BGMForUI
+				INVOKE music_Victory
 				mov CLICK_ENABLE, 1
 ;				mov quit_flag, 1
 ;				mov connect_flag, 0
@@ -2678,10 +2696,12 @@ TimerUpdate PROC,
 									mov GOOD_SWAP, 1
 									mov GAME_STATUS, 6
 									mov USER_TURN, 1
+									INVOKE music_ChangeTurn
 								.ELSEIF USER_TURN == 1
 									mov GAME_STATUS, 0
 									mov CLICK_ENABLE, 1
 									mov USER_TURN, 0
+									INVOKE music_ChangeTurn
 								.ENDIF
 							.ELSEIF GAME_MODE == 1
 								
@@ -2726,6 +2746,7 @@ TimerUpdate PROC,
 								mov GOOD_SWAP, 1
 								mov GAME_STATUS, 7
 								mov USER_TURN, 1
+								INVOKE music_ChangeTurn
 							.ENDIF
 						.ELSE
 							; 存在三消，消去棋子并显示新棋子
@@ -2816,6 +2837,7 @@ TimerUpdate PROC,
 								mov update_flag, 0
 								mov selectedChessOne, -1
 								mov USER_TURN, 0
+								INVOKE music_ChangeTurn
 								mov GAME_STATUS, 0
 								mov CLICK_ENABLE, 1
 							.ENDIF
@@ -2963,6 +2985,7 @@ TimerUpdate PROC,
 			mov send_flag, 2
 			mov connect_flag, 0
 			mov UI_STAGE, 1
+			INVOKE music_BGMForGame
 		.ENDIF
 	.ELSEIF UI_STAGE == 3
 		; 准备连接远程玩家
@@ -2995,6 +3018,7 @@ TimerUpdate PROC,
 			mov damage, 0
 			mov GAME_STATUS, 7
 			mov UI_STAGE, 1
+			INVOKE music_BGMForGame
 			mov REFRESH_PAINT, 1
 		.ENDIF
 	.ENDIF
@@ -3038,6 +3062,7 @@ WinProc PROC uses ebx edi esi,
 	.ELSEIF eax == WM_CREATE
 		INVOKE InitLoadProc, hWnd, wParam, lParam
 		INVOKE SetTimer, hWnd, TIMER_GAMETIMER, TIMER_GAMETIMER_ELAPSE, NULL
+		INVOKE music_BGMForUI
 	.ELSEIF eax == WM_LBUTTONDOWN
 		; 点击可用
 		.IF CLICK_ENABLE == 1
@@ -3129,16 +3154,20 @@ LButtonDownProc PROC,
 		.IF @mouseX >= BUTTON_X && @mouseX <= BUTTON_X + BUTTON_WIDTH
 			movzx eax, @mouseY
 			.IF eax >= BUTTON_Y1 && eax <= BUTTON_Y1 + BUTTON_HEIGHT
+				INVOKE music_Click
 				INVOKE InitGameProc
 				mov GAME_MODE, 0
 				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 1
+				INVOKE music_BGMForGame
 			.ELSEIF eax >= BUTTON_Y2 && eax <= BUTTON_Y2 + BUTTON_HEIGHT
+				INVOKE music_Click
 				mov GAME_MODE, 1
 				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 2
 				INVOKE CreateThread, NULL, NULL, ADDR server_socket, NULL, 0, NULL
 			.ELSEIF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
+				INVOKE music_Click
 				mov GAME_MODE, 1
 				mov REFRESH_PAINT, 1
 				mov UI_STAGE, 3
@@ -3147,7 +3176,9 @@ LButtonDownProc PROC,
 		.ENDIF
 	.ELSEIF UI_STAGE == 1
 		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
+			INVOKE music_Click
 			mov UI_STAGE, 0
+			INVOKE music_BGMForUI
 			mov quit_flag, 1
 			mov connect_flag, 0
 			.IF sock != 0
@@ -3199,6 +3230,7 @@ LButtonDownProc PROC,
 		.ENDIF
 
 		.IF @selected == -1 || selectedChessOne == -1
+			INVOKE music_Select
 			mov eax, @selected
 			mov selectedChessOne, eax
 			mov REFRESH_PAINT, 1
@@ -3206,6 +3238,7 @@ LButtonDownProc PROC,
 			mov eax, @selected
 			sub eax, selectedChessOne
 			.IF eax == -18 || eax == -10 || eax == -8 || eax == 8 || eax == 10 || eax == 18
+				INVOKE music_Swap
 				mov eax, @selected
 				mov selectedChessTwo, eax
 				mov GOOD_SWAP, 1
@@ -3213,6 +3246,7 @@ LButtonDownProc PROC,
 				mov CLICK_ENABLE, 0
 				mov REFRESH_PAINT, 1
 			.ELSE
+				INVOKE music_Select
 				mov eax, @selected
 				mov selectedChessOne, eax
 				mov REFRESH_PAINT, 1
@@ -3220,6 +3254,7 @@ LButtonDownProc PROC,
 		.ENDIF
 	.ELSEIF UI_STAGE == 2
 		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
+			INVOKE music_Click
 			mov UI_STAGE, 0
 			mov REFRESH_PAINT, 1
 			mov quit_flag, 1
@@ -3233,6 +3268,7 @@ LButtonDownProc PROC,
 		.ENDIF
 	.ELSEIF UI_STAGE == 3
 		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
+			INVOKE music_Click
 			mov UI_STAGE, 0
 			mov REFRESH_PAINT, 1
 			mov quit_flag, 1
@@ -3246,6 +3282,7 @@ LButtonDownProc PROC,
 		.ENDIF
 
 		.IF @mouseX >= BUTTON_X && @mouseX <= BUTTON_X + BUTTON_WIDTH
+			INVOKE music_Click
 			movzx eax, @mouseY
 			.IF eax >= BUTTON_Y3 && eax <= BUTTON_Y3 + BUTTON_HEIGHT
 				INVOKE CreateThread, NULL, NULL, ADDR client_socket, NULL, 0, NULL
@@ -3254,6 +3291,7 @@ LButtonDownProc PROC,
 		.ENDIF
 	.ELSEIF UI_STAGE == 10 || UI_STAGE == 20
 		.IF @mouseX >= WINDOW_WIDTH - RETURN_WIDTH && @mouseY <= RETURN_HEIGHT
+			INVOKE music_Click
 			mov UI_STAGE, 0
 			mov REFRESH_PAINT, 1
 			mov quit_flag, 1
