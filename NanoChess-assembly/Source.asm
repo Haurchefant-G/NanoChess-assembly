@@ -1530,27 +1530,45 @@ InspectAndResolveContinuousCells PROC
 					inc eax		; 对齐到m_type
 					push eax
 					.IF @longestContLength == 3 && @currentContLength == 2
-						mov dl, 1
+						; 如果这个位置原来就是炸弹，被炸掉以后新生成的还是炸弹，则m_type=101
+						mov dl, byte ptr [eax]
+						.IF dl == 100
+							mov dl, 101
+						.ELSE
+							mov dl, 1
+						.ENDIF
 						mov [eax], dl
 						dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
-						mov dl, [eax]
+						mov dl, byte ptr [eax]
 						add eax, 2		; 将m_newColor赋为m_color
 						mov [eax], dl
 					.ELSEIF @longestContLength == 4
 						.IF @currentContLength == 2 || @currentContLength == 3
-							mov dl, 1
+							; 如果这个位置原来就是炸弹，被炸掉以后新生成的还是炸弹，则m_type=101
+							mov dl, byte ptr [eax]
+							.IF dl == 100
+								mov dl, 101
+							.ELSE
+								mov dl, 1
+							.ENDIF
 							mov [eax], dl
 							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
-							mov dl, [eax]
+							mov dl, byte ptr [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
 					.ELSEIF @longestContLength == 5
 						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
-							mov dl, 1
+							; 如果这个位置原来就是炸弹，被炸掉以后新生成的还是炸弹，则m_type=101
+							mov dl, byte ptr [eax]
+							.IF dl == 100
+								mov dl, 101
+							.ELSE
+								mov dl, 1
+							.ENDIF
 							mov [eax], dl
 							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
-							mov dl, [eax]
+							mov dl, byte ptr [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
@@ -1637,27 +1655,45 @@ InspectAndResolveContinuousCells PROC
 					inc eax		; 对齐到m_type
 					push eax
 					.IF @longestContLength == 3 && @currentContLength == 2
-						mov dl, 1
+						; 如果这个位置原来就是炸弹，被炸掉以后新生成的还是炸弹，则m_type=101
+						mov dl, byte ptr [eax]
+						.IF dl == 100
+							mov dl, 101
+						.ELSE
+							mov dl, 1
+						.ENDIF
 						mov [eax], dl
 						dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
-						mov dl, [eax]
+						mov dl, byte ptr [eax]
 						add eax, 2		; 将m_newColor赋为m_color
 						mov [eax], dl
 					.ELSEIF @longestContLength == 4
 						.IF @currentContLength == 2 || @currentContLength == 3
-							mov dl, 1
+							; 如果这个位置原来就是炸弹，被炸掉以后新生成的还是炸弹，则m_type=101
+							mov dl, byte ptr [eax]
+							.IF dl == 100
+								mov dl, 101
+							.ELSE
+								mov dl, 1
+							.ENDIF
 							mov [eax], dl
 							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
-							mov dl, [eax]
+							mov dl, byte ptr [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
 					.ELSEIF @longestContLength == 5
 						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
-							mov dl, 1
+							; 如果这个位置原来就是炸弹，被炸掉以后新生成的还是炸弹，则m_type=101
+							mov dl, byte ptr [eax]
+							.IF dl == 100
+								mov dl, 101
+							.ELSE
+								mov dl, 1
+							.ENDIF
 							mov [eax], dl
 							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
-							mov dl, [eax]
+							mov dl, byte ptr [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
@@ -1744,27 +1780,45 @@ InspectAndResolveContinuousCells PROC
 					inc eax		; 对齐到m_type
 					push eax
 					.IF @longestContLength == 3 && @currentContLength == 2
-						mov dl, 1
+						; 如果这个位置原来就是炸弹，被炸掉以后新生成的还是炸弹，则m_type=101
+						mov dl, byte ptr [eax]
+						.IF dl == 100
+							mov dl, 101
+						.ELSE
+							mov dl, 1
+						.ENDIF
 						mov [eax], dl
 						dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
-						mov dl, [eax]
+						mov dl, byte ptr [eax]
 						add eax, 2		; 将m_newColor赋为m_color
 						mov [eax], dl
 					.ELSEIF @longestContLength == 4
 						.IF @currentContLength == 2 || @currentContLength == 3
-							mov dl, 1
+							; 如果这个位置原来就是炸弹，被炸掉以后新生成的还是炸弹，则m_type=101
+							mov dl, byte ptr [eax]
+							.IF dl == 100
+								mov dl, 101
+							.ELSE
+								mov dl, 1
+							.ENDIF
 							mov [eax], dl
 							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
-							mov dl, [eax]
+							mov dl, byte ptr [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
 					.ELSEIF @longestContLength == 5
 						.IF @currentContLength == 2 || @currentContLength == 3 || @currentContLength == 4
-							mov dl, 1
+							; 如果这个位置原来就是炸弹，被炸掉以后新生成的还是炸弹，则m_type=101
+							mov dl, byte ptr [eax]
+							.IF dl == 100
+								mov dl, 101
+							.ELSE
+								mov dl, 1
+							.ENDIF
 							mov [eax], dl
 							dec eax			; 记录原来的m_color（生成炸弹格子的颜色不变）
-							mov dl, [eax]
+							mov dl, byte ptr [eax]
 							add eax, 2		; 将m_newColor赋为m_color
 							mov [eax], dl
 						.ENDIF
