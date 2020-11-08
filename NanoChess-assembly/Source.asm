@@ -50,6 +50,9 @@ RETURN_HEIGHT equ 75
 DIALOG_X equ 100
 DIALOG_Y equ 130
 
+TITLE_X equ 100
+TITLE_Y equ 100
+
 CELL_WIDTH equ 84
 CELL_HEIGHT equ 76
 ROW_CELL_SPACE equ 126
@@ -74,6 +77,8 @@ AVATAR_WIDTH equ 96
 AVATAR_HEIGHT equ AVATAR_WIDTH
 SCORE_X_DELTA equ 14
 SCORE_Y_DELTA equ 33
+TURN_START_X_DELTA equ 20
+TURN_START_Y_DELTA equ 33
 
 USER1_AVATAR_X equ 494
 USER1_AVATAR_Y equ 794
@@ -85,6 +90,15 @@ USER2_AVATAR_Y equ 6
 USER2_SCORE_X equ USER2_AVATAR_X + SCORE_X_DELTA
 USER2_SCORE_Y equ USER2_AVATAR_Y + SCORE_Y_DELTA
 
+TURN_WIDTH equ 30
+TURN_HEIGHT equ TURN_WIDTH
+USER1_TURN_START_X equ USER1_AVATAR_X - TURN_START_X_DELTA - TURN_WIDTH
+USER1_TURN_START_Y equ USER1_AVATAR_Y + TURN_START_Y_DELTA
+USER2_TURN_START_X equ USER2_AVATAR_X + AVATAR_WIDTH + TURN_START_X_DELTA 
+USER2_TURN_START_Y equ USER2_AVATAR_Y + TURN_START_Y_DELTA
+
+TURN_MAX_MOVE equ 300
+
 BOARD_X equ 6
 BOARD_Y equ 105
 CLICK_BOARD_X equ BOARD_X + CELL_WIDTH / 8
@@ -92,7 +106,7 @@ CLICK_BOARD_Y equ BOARD_Y
 CLICK_CELL_WIDTH equ CELL_WIDTH / 4 * 3
 CLICK_CELL_HEIGHT equ CELL_HEIGHT
 
-INIT_SCORE equ 1000
+INIT_SCORE equ 5000
 
 DAMAGE_PER_CHESS equ 50
 
@@ -130,6 +144,8 @@ USER1_SCORE_TEXT_LEN db 5
 USER2_SCORE_TEXT db "xxxxx",0
 USER2_SCORE_TEXT_LEN db 5
 
+turnMove DWORD 0
+
 GOOD_SWAP BYTE 0	; 交换是否可消去
 
 AIdelay DWORD 0		; AI交换动画延迟计数
@@ -166,7 +182,7 @@ dir_num DWORD 6
 
 ; socket相关
 local_ip DB 32 DUP(0)								;----------本地IP地址
-server_ip DB "183.172.115.218", 16 DUP(0)			;----------服务器IP地址
+server_ip DB 32 DUP(0)			;----------服务器IP地址
 dns_ip DB "8.8.8.8", 0								;----------dns IP
 port DWORD 30100									;----------端口
 result DB 2048 DUP(0)								;----------接收信息结果
@@ -256,7 +272,8 @@ $$Unicode bombEffect, png\bombEffect.png		; 炸弹特效
 $$Unicode chessSelected, png\chessSelected.png			; 分数框
 $$Unicode avatar, png\avatar.png
 $$Unicode cursor, png\cursor.png
-
+$$Unicode turnTip, png\turnTip.png
+$$Unicode titleLogo, png\titleLogo.png
 
 hFont DWORD 0
 
@@ -285,6 +302,8 @@ hChessSelected	DWORD 0
 
 hAvatar	DWORD 0
 hCursor	DWORD 0
+hTurnTip	DWORD 0
+hTitle	DWORD 0
 
 ; proc声明
 InitLoadProc PROTO STDCALL hWnd:DWORD, wParam:DWORD, lParam:DWORD
@@ -2592,6 +2611,7 @@ TimerUpdate PROC,
 ; 更新数据（m_color, m_scale最好只在其中更新）
 ;----------------
 	local	@i:DWORD
+	local	@j:DWORD
 	local	@cell1:CELL
 	local	@cell2:CELL
 	local	@chessAddress1:DWORD
@@ -2837,6 +2857,7 @@ TimerUpdate PROC,
 							.ENDIF
 							INVOKE IntToString, damage, ADDR DAMAGE_TEXT
 							mov GOOD_SWAP, 0
+							mov GAME_STATUS, 4
 							mov bombEffectFrame, 0
 						.ENDIF
 					.ELSEIF USER_TURN == 1
@@ -2905,6 +2926,8 @@ TimerUpdate PROC,
 			mov eax, OFFSET chessboard
 			mov @chessAddress1, eax
 
+
+			mov @j, 0	; 记录是否有炸弹炸了
 			.WHILE @i < boardsize
 				mov eax, @chessAddress1
 				mov eax, [eax]
@@ -2922,6 +2945,9 @@ TimerUpdate PROC,
 						mov [ebx], eax
 						mov GAME_STATUS, 5
 					.ELSE
+						.IF @cell1.m_type >= 100
+							mov @j, 1	; 有炸掉的
+						.ENDIF
 						movzx eax, @cell1.m_scale
 						mov edx, 0
 						div memnum2
@@ -2937,6 +2963,9 @@ TimerUpdate PROC,
 			.ENDW
 
 			.IF GAME_STATUS == 4
+				.IF bombEffectFrame == 0 && @j == 1
+					INVOKE music_Bomb 
+				.ENDIF
 				add bombEffectFrame, 1
 				mov eax, damage
 				mov edx, 0
@@ -3425,6 +3454,9 @@ PaintProc PROC,
 						BUTTON_X,					
 						BUTTON_Y3,					
 						BUTTON_WIDTH, BUTTON_HEIGHT
+		INVOKE GdipDrawImageI, graphics, hTitle,
+						TITLE_X,					
+						TITLE_Y				
 		mov REFRESH_PAINT, 0
 
 	.ELSEIF UI_STAGE == 1
@@ -3843,12 +3875,35 @@ PaintProc PROC,
 							USER2_AVATAR_Y,
 							AVATAR_WIDTH, AVATAR_HEIGHT
 
+		; 绘制下棋者提示
+		.IF USER_TURN == 0
+			mov @x, USER1_TURN_START_X
+			mov eax, turnMove
+			sub @x, eax
+			mov @y, USER1_TURN_START_Y
+		.ELSEIF USER_TURN == 1
+			mov @x, USER2_TURN_START_X
+			mov eax, turnMove
+			add @x, eax
+			mov @y, USER2_TURN_START_Y
+		.ENDIF
+		INVOKE GdipDrawImageRectI, graphics, hTurnTip,
+							@x,
+							@y,
+							TURN_WIDTH, TURN_HEIGHT
+		.IF turnMove >= TURN_MAX_MOVE
+			mov turnMove, 0
+		.ELSE
+			add turnMove, 10
+		.ENDIF
+
 		; 绘制分数
 		INVOKE SelectObject, @hdcMemBuffer, hFont
 		INVOKE SetTextColor, @hdcMemBuffer, 0FFFFFFh ; 产生白色的画笔
 		INVOKE SetBkMode, @hdcMemBuffer, TRANSPARENT
 		INVOKE TextOut, @hdcMemBuffer, USER1_SCORE_X, USER1_SCORE_Y, ADDR USER1_SCORE_TEXT, USER1_SCORE_TEXT_LEN
 		INVOKE TextOut, @hdcMemBuffer, USER2_SCORE_X, USER2_SCORE_Y, ADDR USER2_SCORE_TEXT, USER2_SCORE_TEXT_LEN
+
 
 	.ELSEIF UI_STAGE == 2
 		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
@@ -3952,6 +4007,8 @@ InitLoadProc PROC,
 
 	INVOKE GdipLoadImageFromFile, OFFSET avatar, ADDR hAvatar
 	INVOKE GdipLoadImageFromFile, OFFSET cursor, ADDR hCursor
+	INVOKE GdipLoadImageFromFile, OFFSET turnTip, ADDR hTurnTip
+	INVOKE GdipLoadImageFromFile, OFFSET titleLogo, ADDR hTitle
 
 	INVOKE CreateFont, 30, 12, 0, 0, FW_BLACK, 0, 0, 0, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_CHARACTER_PRECIS, DEFAULT_QUALITY, DEFAULT_PITCH or FF_SWISS, addr fontName
 	mov	hFont,eax
