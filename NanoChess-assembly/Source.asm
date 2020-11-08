@@ -57,7 +57,15 @@ COLUMN_CELL_SPACE equ 38
 CHESS_WIDTH equ 66
 CHESS_HEIGHT equ 60
 
-; HALF_CELL_WIDTH equ
+HALF_CELL_WIDTH equ 42
+HALF_CELL_HEIGHT equ 38
+
+BOMBEFFECT_MIN_WIDTH equ 60
+BOMBEFFECT_MIN_HEIGHT equ 69
+BOMBEFFECT_MAX_WIDTH equ 200
+BOMBEFFECT_MAX_HEIGHT equ 230
+BOMBEFFECT_MAX_FRAME equ 7
+
 ROW_CELL_SPACE_HALF equ 63
 EVEN_CELL_START equ 63
 ;chessBg equ BMP_CHESSBG
@@ -131,6 +139,8 @@ DAMAGE_TEXT_PREFIX db "-"
 DAMAGE_TEXT db "xxxxx", 0
 DAMAGE_TEXT_LEN db 5
 newScore DWORD 0		; 伤害造成后的新分数
+
+bombEffectFrame	DWORD	0; 炸弹特效帧
 
 ; 棋格结构体
 CELL STRUCT
@@ -231,6 +241,7 @@ $$Unicode chessOrange, png\chessOrange.png		; type4
 $$Unicode chessYellow, png\chessYellow.png		; type5
 $$Unicode chessBlue, png\chessBlue.png			; type6
 $$Unicode chessBomb, png\chessBomb.png			; 炸弹
+$$Unicode bombEffect, png\bombEffect.png		; 炸弹特效
 $$Unicode chessSelected, png\chessSelected.png			; 分数框
 $$Unicode avatar, png\avatar.png
 $$Unicode cursor, png\cursor.png
@@ -258,6 +269,7 @@ hChessType4  DWORD 0
 hChessType5  DWORD 0
 hChessType6  DWORD 0
 hChessBomb  DWORD 0
+hBombEffect  DWORD 0
 hChessSelected	DWORD 0
 
 hAvatar	DWORD 0
@@ -1726,7 +1738,6 @@ InspectAndResolveContinuousCells ENDP
 ; 信息头有3种类型，1代表交换的棋子，2代表棋盘信息和分数，3代表终止符
 parse_recv PROC uses esi eax ebp ecx
 	LOCAL flag: DWORD
-	LOCAL count: DWORD
 
 	; 获取信息头
 	mov esi, OFFSET result
@@ -1791,7 +1802,6 @@ parse_recv ENDP
 ; 设置发送的信息
 ; 信息头定义见上文
 set_send PROC uses esi eax ebp ecx ebx
-	LOCAL count: DWORD
 
 	; 初始化result
 	; 设置信息头
@@ -2236,8 +2246,6 @@ Grade ENDP
 ;------------------AI
 ;------------------采用贪心的方式，当前所有的可能选择得分最高的一种
 AI PROC
-		local @chess_1: CELL						;要移动的棋子一
-		local @chess_2: CELL						;要移动的棋子二
 		local @row: DWORD							;当前遍历的行
 		local @col: DWORD							;当前遍历的列
 		local @dir: DWORD							;当前遍历的方向
@@ -2455,7 +2463,6 @@ TimerUpdate PROC,
 ; 更新数据（m_color, m_scale最好只在其中更新）
 ;----------------
 	local	@i:DWORD
-	local	@j:DWORD
 	local	@cell1:CELL
 	local	@cell2:CELL
 	local	@chessAddress1:DWORD
@@ -2639,6 +2646,7 @@ TimerUpdate PROC,
 						INVOKE IntToString, damage, ADDR DAMAGE_TEXT
 						mov GOOD_SWAP, 0
 						mov GAME_STATUS, 4
+						mov bombEffectFrame, 0
 					.ENDIF
 				.ELSEIF GAME_MODE == 1
 					.IF USER_TURN == 0
@@ -2693,7 +2701,7 @@ TimerUpdate PROC,
 							.ENDIF
 							INVOKE IntToString, damage, ADDR DAMAGE_TEXT
 							mov GOOD_SWAP, 0
-							mov GAME_STATUS, 4
+							mov bombEffectFrame, 0
 						.ENDIF
 					.ELSEIF USER_TURN == 1
 						.IF GOOD_SWAP == 1
@@ -2718,6 +2726,7 @@ TimerUpdate PROC,
 							INVOKE IntToString, damage, ADDR DAMAGE_TEXT
 							mov GOOD_SWAP, 0
 							mov GAME_STATUS, 4
+							mov bombEffectFrame, 0
 						.ELSEIF
 							.IF update_flag == 2
 								mov update_flag, 0
@@ -2741,6 +2750,7 @@ TimerUpdate PROC,
 								INVOKE IntToString, damage, ADDR DAMAGE_TEXT
 								mov GOOD_SWAP, 0
 								mov GAME_STATUS, 4
+								mov bombEffectFrame, 0
 							.ELSEIF update_flag == 3
 								mov update_flag, 0
 								mov selectedChessOne, -1
@@ -2767,8 +2777,8 @@ TimerUpdate PROC,
 					.IF @cell1.m_scale == 1
 						mov al, @cell1.m_newColor
 						mov @cell1.m_color, al
-						.IF @cell1.m_type == 100
-							mov @cell1.m_type, 0
+						.IF @cell1.m_type >= 100
+							sub @cell1.m_type, 100
 						.ENDIF
 						mov ebx, @chessAddress1
 						mov eax, @cell1
@@ -2790,6 +2800,7 @@ TimerUpdate PROC,
 			.ENDW
 
 			.IF GAME_STATUS == 4
+				add bombEffectFrame, 1
 				mov eax, damage
 				mov edx, 0
 				mov ebx, 6
@@ -2808,6 +2819,7 @@ TimerUpdate PROC,
 					INVOKE IntToString, USER1_SCORE, ADDR USER1_SCORE_TEXT
 				.ENDIF
 			.ELSEIF GAME_STATUS == 5
+				mov bombEffectFrame, BOMBEFFECT_MAX_FRAME
 				mov eax, newScore
 				.IF USER_TURN == 0
 					mov USER2_SCORE, eax
@@ -3219,6 +3231,8 @@ PaintProc PROC,
 	local	@chessh:DWORD
 	local	@chessAddress:DWORD
 	local	@chessColor:DWORD
+	local	@bombEffectw:DWORD
+	local	@bombEffecth:DWORD
 
 	invoke  BeginPaint,hWnd,addr @ps
 	mov hDC,eax
@@ -3299,6 +3313,37 @@ PaintProc PROC,
 			inc @i
 		.UNTIL @i == 17
 
+		.iF GAME_STATUS == 4
+			; 计算炸弹爆炸特效的大小
+			mov eax, BOMBEFFECT_MAX_WIDTH
+			mul bombEffectFrame
+			mov ecx, eax
+			mov ebx, BOMBEFFECT_MAX_FRAME
+			sub ebx, bombEffectFrame
+			mov eax, BOMBEFFECT_MIN_WIDTH
+			mul ebx
+			add ecx, eax
+			mov eax, ecx
+			mov edx, 0
+			mov ebx, BOMBEFFECT_MAX_FRAME
+			div ebx
+			mov @bombEffectw, eax
+
+			mov eax, BOMBEFFECT_MAX_HEIGHT
+			mul bombEffectFrame
+			mov ecx, eax
+			mov ebx, BOMBEFFECT_MAX_FRAME
+			sub ebx, bombEffectFrame
+			mov eax, BOMBEFFECT_MIN_HEIGHT
+			mul ebx
+			add ecx, eax
+			mov eax, ecx
+			mov edx, 0
+			mov ebx, BOMBEFFECT_MAX_FRAME
+			div ebx
+			mov @bombEffecth, eax
+		.ENDIF
+
 
 		mov @i, 0
 		mov @y, BOARD_Y
@@ -3366,17 +3411,61 @@ PaintProc PROC,
 						@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
 						@chessw, @chessh
 					.IF GAME_STATUS == 4
-						.IF @cell.m_type == 100 || (@cell.m_type == 1 && @cell.m_newColor == 0)
+						.IF @cell.m_type >= 100 || (@cell.m_type == 1 && @cell.m_newColor == 0)
 							INVOKE GdipDrawImageRectI, graphics, hChessBomb,
-							@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
-							@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+							@chessx,					
+							@chessy,					
 							@chessw, @chessh
+							.IF @cell.m_type >= 100
+								;mov eax, CELL_WIDTH
+								;mov eax, @bombEffectw
+								;mov edx, 0
+								;div memnum2
+								;add eax, @x
+								;mov @chessx, eax
+								;mov eax, CELL_HEIGHT
+								;sub eax, @bombEffecth
+								;mov edx, 0
+								;div memnum2
+								;add eax, @y
+								;mov @chessy, eax
+
+								mov eax, @bombEffectw
+								mov edx, 0
+								div memnum2
+								mov ebx, HALF_CELL_WIDTH
+								add ebx, @x
+								sub ebx, eax
+								mov @chessx, ebx
+
+								mov eax, @bombEffecth
+								mov edx, 0
+								div memnum2
+								mov ebx, HALF_CELL_HEIGHT
+								add ebx, @y
+								sub ebx, eax
+								mov @chessy, ebx
+								;mov @chessx, eax
+
+								;mov eax, HALF_CELL_WIDTH
+								;add eax, @x
+								;sub eax, @bombEffectw
+								;mov @chessx, eax
+								;mov eax, HALF_CELL_HEIGHT
+								;add eax, @y
+								;sub eax, @bombEffecth
+								;mov @chessy, eax
+								INVOKE GdipDrawImageRectI, graphics, hBombEffect,
+									@chessx,					
+									@chessy,					
+									@bombEffectw, @bombEffecth
+							.ENDIF
 						.ENDIF
 					.ELSE
 						.IF @cell.m_type == 1
 							INVOKE GdipDrawImageRectI, graphics, hChessBomb,
-							@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
-							@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
+							@chessx,					
+							@chessy,					
 							@chessw, @chessh
 						.ENDIF
 					.ENDIF
@@ -3442,11 +3531,54 @@ PaintProc PROC,
 						@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
 						@chessw, @chessh
 					.IF GAME_STATUS == 4
-						.IF @cell.m_type == 100 || (@cell.m_type == 1 && @cell.m_newColor == 0)
+						.IF @cell.m_type >= 100 || (@cell.m_type == 1 && @cell.m_newColor == 0)
 							INVOKE GdipDrawImageRectI, graphics, hChessBomb,
 							@chessx,					; BOARD_X + @j * ROW_CELL_SPACE,
 							@chessy,					; BOARD_Y + @i * COLUMN_CELL_SPACE,
 							@chessw, @chessh
+							.IF @cell.m_type >= 100
+								;mov eax, CELL_WIDTH
+								;sub eax, @bombEffectw
+								;mov edx, 0
+								;div memnum2
+								;add eax, @x
+								;mov @chessx, eax
+								;mov eax, CELL_HEIGHT
+								;sub eax, @bombEffecth
+								;mov edx, 0
+								;div memnum2
+								;add eax, @y
+								;mov @chessy, eax
+
+								mov eax, @bombEffectw
+								mov edx, 0
+								div memnum2
+								mov ebx, HALF_CELL_WIDTH
+								add ebx, @x
+								sub ebx, eax
+								mov @chessx, ebx
+
+								mov eax, @bombEffecth
+								mov edx, 0
+								div memnum2
+								mov ebx, HALF_CELL_HEIGHT
+								add ebx, @y
+								sub ebx, eax
+								mov @chessy, ebx
+
+								;mov eax, HALF_CELL_WIDTH
+								;add eax, @x
+								;sub eax, @bombEffectw
+								;mov @chessx, eax
+								;mov eax, HALF_CELL_HEIGHT
+								;add eax, @y
+								;sub eax, @bombEffecth
+								;mov @chessy, eax
+								INVOKE GdipDrawImageRectI, graphics, hBombEffect,
+									@chessx,					
+									@chessy,					
+									@bombEffectw, @bombEffecth
+							.ENDIF
 						.ENDIF
 					.ELSE
 						.IF @cell.m_type == 1
@@ -3493,6 +3625,7 @@ PaintProc PROC,
 			.ENDIF
 			mov REFRESH_PAINT, 0
 		.ELSEIF GAME_STATUS == 6
+			; 绘制对方玩家或AI的选择棋子指示
 			mov eax, selectedChessOne
 			.IF eax != -1
 				mov edx, 0
@@ -3563,6 +3696,7 @@ PaintProc PROC,
 		INVOKE SetBkMode, @hdcMemBuffer, TRANSPARENT
 		INVOKE TextOut, @hdcMemBuffer, USER1_SCORE_X, USER1_SCORE_Y, ADDR USER1_SCORE_TEXT, USER1_SCORE_TEXT_LEN
 		INVOKE TextOut, @hdcMemBuffer, USER2_SCORE_X, USER2_SCORE_Y, ADDR USER2_SCORE_TEXT, USER2_SCORE_TEXT_LEN
+
 	.ELSEIF UI_STAGE == 2
 		INVOKE GdipDrawImageI, graphics, hStartUI, 0, 0
 		INVOKE GdipDrawImageRectI, graphics, hReturnButton,
@@ -3660,6 +3794,7 @@ InitLoadProc PROC,
 	INVOKE GdipLoadImageFromFile, OFFSET chessYellow, ADDR hChessType5
 	INVOKE GdipLoadImageFromFile, OFFSET chessBlue, ADDR hChessType6
 	INVOKE GdipLoadImageFromFile, OFFSET chessBomb, ADDR hChessBomb
+	INVOKE GdipLoadImageFromFile, OFFSET bombEffect, ADDR hBombEffect
 	INVOKE GdipLoadImageFromFile, OFFSET chessSelected, ADDR hChessSelected
 
 	INVOKE GdipLoadImageFromFile, OFFSET avatar, ADDR hAvatar
